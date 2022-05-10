@@ -27,11 +27,11 @@ function [scaling_information, selectedunit, lut] = determine_scaling(basepath, 
 %
 %   Created by Robert F Cooper, 2018-11-08
 
-    if ~exist('basepath','var')
+    if ~exist('basepath','var') || isempty(basepath)
         basepath=pwd;
     end
 
-    if ~exist('desired_unit','var')
+    if ~exist('desired_unit','var') || isempty(desired_unit)
         liststr = {'microns (mm density)','degrees','arcmin'};
         [selectedunit, oked] = listdlg('PromptString','Select output units:',...
                                       'SelectionMode','single',...
@@ -46,7 +46,7 @@ function [scaling_information, selectedunit, lut] = determine_scaling(basepath, 
     end
 
     
-    if ~exist('lut_path','var')
+    if ~exist('lut_path','var') || isempty(lut_path)
         [scaling_path, scalingdir] = uigetfile(fullfile(basepath,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
         scaling_path = fullfile(scalingdir,scaling_path);
     else

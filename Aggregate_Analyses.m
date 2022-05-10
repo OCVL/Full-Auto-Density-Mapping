@@ -11,6 +11,12 @@ individual_path = getparent(globalpath,2,'full');
 % Load the global dataset.
 load(fullfile(globalpath, agg_fName));
 
+% Find the micron/pixel equivalent to deg/pix
+[~,~,lut] = determine_scaling(individual_path,fNames,[],'degrees');
+persub_micronsperdegree = (291*lut{2})/24;
+
+
+
 %% Downsample everything first- we have a lot of redundant data.
 downsample_factor = 0.25;
 
@@ -143,6 +149,7 @@ ylabel('Confidence (AU)')
 fList = 1:length(fNames);
 % fList = [36,40,45,49];
 
+
 for f=fList
     disp(['Loading, downsampling and prepping: ' fNames{f}])
     load( fullfile(individual_path, fNames{f}), 'density_map_comb', 'blendederr_comb','fovea_coords', 'imsize');
@@ -151,6 +158,8 @@ for f=fList
     indiv_shifted_density = nan(downsampled_size);
     indiv_shifted_confidence = nan(downsampled_size);
 
+    mm_position = (0:maxstriplen)*(downsamp_scaling*persub_micronsperdegree(f));
+    
     rowrange = ceil((montage_rect{f}(1,2):montage_rect{f}(3,2))+global_fovea_coords(2));
     colrange = ceil((montage_rect{f}(1,1):montage_rect{f}(3,1))+global_fovea_coords(1));
 
@@ -228,15 +237,32 @@ for f=fList
                                                          global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
     indiv_temp_strip_conf_diff=indiv_temp_strip_conf-avg_temp_strip_conf;
 
+    
+    
     plot(deg_position, indiv_temp_strip_conf_diff);
     drawnow;
 
     indiv_temp_strip = mean(fliplr(indiv_shifted_density(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,...
                                                          global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
+    
+                                                     
+    indiv_temp_deg_cells = indiv_temp_strip.*downsamp_scaling;
+    
+    curciostart = mm_position>100;
+    total_temp_deg_cells = cumsum(indiv_temp_deg_cells(curciostart));
+    figure(12); 
+    subplot(2,1,1); hold on;
+    plot( deg_position(curciostart), total_temp_deg_cells);
+    subplot(2,1,2); hold on;
+    plot( mm_position(curciostart), total_temp_deg_cells);
+    
+    
+    
+    
     indiv_temp_stripdiff=indiv_temp_strip-avg_temp_strip;
-    figure(12);
+    
 
-    plot(deg_position, indiv_temp_stripdiff);
+%     plot(deg_position, indiv_temp_stripdiff);
     drawnow;
 
     
