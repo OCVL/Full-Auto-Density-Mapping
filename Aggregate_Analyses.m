@@ -232,17 +232,15 @@ for f=fList
     indiv_shifted_density( rowrange, colrange) =  density_map_comb;
     indiv_shifted_confidence( rowrange, colrange) = blendederr_comb;
 
-    indiv_shifted_density = indiv_shifted_density.*threshold_mask;
-    indiv_shifted_confidence = indiv_shifted_confidence.*threshold_mask;
+%     indiv_shifted_density = indiv_shifted_density.*threshold_mask;
+%     indiv_shifted_confidence = indiv_shifted_confidence.*threshold_mask;
     
     indiv_shifted_density(indiv_shifted_density==0) = NaN;
     indiv_shifted_confidence(indiv_shifted_confidence==0) = NaN;
 
     
     
-    % Create and extract total cone annuli.
-    shifted_fovea_coords = (fovea_coords*downsample_factor);
-    
+    % Create and extract total cone annuli.    
     [colmesh, rowmesh] = meshgrid(1:size(indiv_shifted_density,2), 1:size(indiv_shifted_density,1));
     
     distmesh = sqrt((colmesh-global_fovea_coords(1)).^2 + ...
@@ -251,8 +249,7 @@ for f=fList
     maxdist = max(distmesh(:));
     radius = 5; %In pixels
     
-    r=1;
-    clear numcones_degrad num_cones_in_annulus
+    r=1;    
     radii = 0:radius:maxdist;
     
     micrad = nan(size(radii));
@@ -263,7 +260,7 @@ for f=fList
     
 %     while inner_rad + radius < maxdist
     
-        aoi = double(distmesh > radii(r) & distmesh < radii(r+1));
+        aoi = double(distmesh > radii(r) & distmesh <= radii(r+1));
         aoi(aoi == 0) = NaN;
         
         
@@ -271,7 +268,7 @@ for f=fList
         annular_area = sum(aoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
         
         aoi_density = indiv_shifted_density.*aoi;
-
+%         imagesc(aoi_density)
         
         degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
         micrad(r) = persub_micronsperdegree(f)*degrad(r);
@@ -288,6 +285,8 @@ for f=fList
     tot_cones = cumsum(num_cones_in_annulus{f},'omitnan');
     tot_cones(isnan(num_cia)) = NaN;
     
+    num_cones_in_annulus{f} = tot_cones;
+    
     figure(12); 
     subplot(2,1,1);hold on;
     plot(numcones_degrad{f}, tot_cones);
@@ -299,4 +298,24 @@ for f=fList
 %     pause;
 end
 figure(12); hold off;
+
+
+totcones = cell2mat(num_cones_in_annulus')';
+degsubs = cell2mat(numcones_degrad')';
+mmsubs = cell2mat(numcones_micrad')';
+
+combined = nan(size(totcones,1), size(totcones,2)*3);
+combined(:,1:3:end) = degsubs;
+combined(:,2:3:end) = mmsubs;
+combined(:,3:3:end) = totcones;
+
+dattable = table();
+indarr = 1:3:size(combined,2)+1;
+for j=1:length(indarr)-1
+    beginv = indarr(j);
+    endv = indarr(j+1)-1;
+    dattable.(fNames{j}) = combined(:,beginv:endv);
+
+end
+writetable(dattable, 'totalcones_table.csv');
 % figure(13); hold off;
