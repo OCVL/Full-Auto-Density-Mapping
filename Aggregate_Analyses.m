@@ -142,12 +142,15 @@ saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_a
 figure(12); clf; hold on;
 xlabel('Radial distance (degrees)')
 ylabel('Density (cells/degrees^2)')
-figure(13); clf; hold on;
-xlabel('Radial distance (degrees)')
-ylabel('Confidence (AU)')
+% figure(13); clf; hold on;
+% xlabel('Radial distance (degrees)')
+% ylabel('Confidence (AU)')
 
 fList = 1:length(fNames);
 % fList = [36,40,45,49];
+numcones_micrad = cell(size(fList));
+numcones_degrad = cell(size(fList));
+num_cones_in_annulus = cell(size(fList));
 
 
 for f=fList
@@ -195,7 +198,8 @@ for f=fList
         density_map_comb = density_map_comb .*good_data_mask;
         blendederr_comb = blendederr_comb .*good_data_mask;
     end
-
+    clear X Y
+    
     % Remove the offending values.
     density_map_comb(( (density_map_comb > densclose) & ~closerangemask )) = NaN;
     density_map_comb(( (blendederr_comb < lowconffar) & ~farrangemask )) = NaN;
@@ -220,7 +224,9 @@ for f=fList
     % Downsample the dataset at the same rate the average was, and mask it.
     density_map_comb = imresize(density_map_comb, indiv_size, 'lanczos3');
     blendederr_comb = imresize(blendederr_comb, indiv_size, 'lanczos3');
-    figure(121); imagesc(density_map_comb); axis image;
+    figure(121); imagesc(density_map_comb); axis image; hold on;
+    plot(fovea_coords(1)*.25, fovea_coords(2)*.25, 'r*')
+    hold off;
     
     % Put the dataset it the position we had it before.
     indiv_shifted_density( rowrange, colrange) =  density_map_comb;
@@ -232,41 +238,65 @@ for f=fList
     indiv_shifted_density(indiv_shifted_density==0) = NaN;
     indiv_shifted_confidence(indiv_shifted_confidence==0) = NaN;
 
-    figure(13);
-    indiv_temp_strip_conf = mean(fliplr(indiv_shifted_confidence(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,...
-                                                         global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
-    indiv_temp_strip_conf_diff=indiv_temp_strip_conf-avg_temp_strip_conf;
+    
+    
+    % Create and extract total cone annuli.
+    shifted_fovea_coords = (fovea_coords*downsample_factor);
+    
+    [colmesh, rowmesh] = meshgrid(1:size(indiv_shifted_density,2), 1:size(indiv_shifted_density,1));
+    
+    distmesh = sqrt((colmesh-global_fovea_coords(1)).^2 + ...
+                    (rowmesh-global_fovea_coords(2)).^2);
 
+    maxdist = max(distmesh(:));
+    radius = 5; %In pixels
     
+    r=1;
+    clear numcones_degrad num_cones_in_annulus
+    radii = 0:radius:maxdist;
     
-    plot(deg_position, indiv_temp_strip_conf_diff);
-    drawnow;
+    micrad = nan(size(radii));
+    degrad = nan(size(radii));
+    num_cia = nan(size(radii));
+    
+    parfor r=1:length(radii)-1
+    
+%     while inner_rad + radius < maxdist
+    
+        aoi = double(distmesh > radii(r) & distmesh < radii(r+1));
+        aoi(aoi == 0) = NaN;
+        
+        
+    
+        annular_area = sum(aoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
+        
+        aoi_density = indiv_shifted_density.*aoi;
 
-    indiv_temp_strip = mean(fliplr(indiv_shifted_density(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,...
-                                                         global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
+        
+        degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
+        micrad(r) = persub_micronsperdegree(f)*degrad(r);
+        num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
+        
+%         r=r+1;
+%         inner_rad = inner_rad + radius;
+    end
     
-                                                     
-    indiv_temp_deg_cells = indiv_temp_strip.*downsamp_scaling;
+    numcones_degrad{f} = degrad;
+    numcones_micrad{f} = micrad;
+    num_cones_in_annulus{f} = num_cia;
     
-    curciostart = mm_position>100;
-    total_temp_deg_cells = cumsum(indiv_temp_deg_cells(curciostart));
+    tot_cones = cumsum(num_cones_in_annulus{f},'omitnan');
+    tot_cones(isnan(num_cia)) = NaN;
+    
     figure(12); 
-    subplot(2,1,1); hold on;
-    plot( deg_position(curciostart), total_temp_deg_cells);
-    subplot(2,1,2); hold on;
-    plot( mm_position(curciostart), total_temp_deg_cells);
-    
-    
-    
-    
-    indiv_temp_stripdiff=indiv_temp_strip-avg_temp_strip;
-    
-
-%     plot(deg_position, indiv_temp_stripdiff);
+    subplot(2,1,1);hold on;
+    plot(numcones_degrad{f}, tot_cones);
+    subplot(2,1,2);hold on;
+    plot(numcones_micrad{f}, tot_cones);
     drawnow;
 
     
 %     pause;
 end
 figure(12); hold off;
-figure(13); hold off;
+% figure(13); hold off;
