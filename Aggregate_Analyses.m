@@ -48,9 +48,9 @@ value_map_stddev(value_map_stddev==0) = NaN;
 maskedconf(maskedconf==0) = NaN;
 maskeddensity(maskeddensity==0) = NaN;
 
+maxstriplen = min([downsampled_size-global_fovea_coords global_fovea_coords]); %Find out the largest strip we can make in pixels.
 
 %% Obtain global strip averages of density.
-maxstriplen = min([downsampled_size-global_fovea_coords global_fovea_coords]); %Find out the largest strip we can make in pixels.
 
 deg_position = (0:maxstriplen)*downsamp_scaling;
 strip_radius = round(1/(2*downsamp_scaling)); % Corresponds to 1 degree.
@@ -89,6 +89,82 @@ saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_a
 % legend('Temporal/Nasal','Superior/Inferior')
 % xlabel('Radial distance (degrees)')
 % ylabel('Density (cells/degrees^2)')
+
+%% Create and extract total cone annuli from average map.   
+[colmesh, rowmesh] = meshgrid(1:size(maskeddensity,2), 1:size(maskeddensity,1));
+
+horzmask = abs(colmesh-global_fovea_coords(1))>=abs(rowmesh-global_fovea_coords(2));
+vertmask = abs(colmesh-global_fovea_coords(1))<abs(rowmesh-global_fovea_coords(2));
+
+distmesh = sqrt((colmesh-global_fovea_coords(1)).^2 + ...
+                (rowmesh-global_fovea_coords(2)).^2);
+
+maxdist = max(distmesh(:));
+radius = 5; %In pixels
+
+r=1;    
+radii = 0:radius:maxdist;
+
+micrad = nan(size(radii));
+degrad = nan(size(radii));
+num_cia = nan(size(radii));
+num_cia_horz = nan(size(radii));
+num_cia_vert = nan(size(radii));
+num_cia_sep = nan(size(radii));
+
+parfor r=1:length(radii)-1
+
+%     while inner_rad + radius < maxdist
+
+    aoi = double(distmesh > radii(r) & distmesh <= radii(r+1));
+    aoi(aoi == 0) = NaN;
+    
+    horzaoi = aoi.*horzmask;
+    horzaoi(horzaoi == 0) = NaN;
+    vertaoi = aoi.*vertmask;
+    vertaoi(vertaoi == 0) = NaN;
+
+    annular_area = sum(aoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
+    horz_annular_area = sum(horzaoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
+    vert_annular_area = sum(vertaoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
+
+    aoi_density = maskeddensity.*aoi;
+    horz_aoi_density = maskeddensity.*horzaoi;
+    vert_aoi_density = maskeddensity.*vertaoi;    
+    
+    degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
+%     micrad(r) = persub_micronsperdegree*degrad(r);
+    num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
+
+    num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
+    num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*vert_annular_area;
+    num_cia_sep(r) = num_cia_horz(r) + num_cia_vert(r);
+    
+%         r=r+1;
+%         inner_rad = inner_rad + radius;
+end
+
+numcones_degrad = degrad;
+% numcones_micrad = micrad;
+
+tot_cones = cumsum(num_cia,'omitnan');
+tot_cones(isnan(num_cia)) = NaN;
+
+tot_cones_horz= cumsum(num_cia_horz,'omitnan');
+tot_cones_horz(isnan(num_cia_horz)) = NaN;
+tot_cones_vert= cumsum(num_cia_vert,'omitnan');
+tot_cones_vert(isnan(num_cia_vert)) = NaN;
+
+tot_cones_sep = cumsum(num_cia_sep,'omitnan');
+tot_cones_sep(isnan(num_cia_sep)) = NaN;
+
+
+figure(12); 
+subplot(2,1,1);hold on;
+plot(numcones_degrad, tot_cones);
+subplot(2,1,2);hold on;
+plot(numcones_degrad, tot_cones_sep,numcones_degrad,tot_cones_horz, numcones_degrad, tot_cones_vert);
+drawnow; hold off;
 
 
 %% STDDEV
@@ -151,6 +227,7 @@ fList = 1:length(fNames);
 numcones_micrad = cell(size(fList));
 numcones_degrad = cell(size(fList));
 num_cones_in_annulus = cell(size(fList));
+num_cones_in_annulus_sep = cell(size(fList));
 
 
 for f=fList
@@ -161,7 +238,7 @@ for f=fList
     indiv_shifted_density = nan(downsampled_size);
     indiv_shifted_confidence = nan(downsampled_size);
 
-    mm_position = (0:maxstriplen)*(downsamp_scaling*persub_micronsperdegree(f));
+    mm_position = (0:maxstriplen)*(downsamp_scaling*persub_micronsperdegree(f))/1000;
     
     rowrange = ceil((montage_rect{f}(1,2):montage_rect{f}(3,2))+global_fovea_coords(2));
     colrange = ceil((montage_rect{f}(1,1):montage_rect{f}(3,1))+global_fovea_coords(1));
@@ -225,7 +302,7 @@ for f=fList
     density_map_comb = imresize(density_map_comb, indiv_size, 'lanczos3');
     blendederr_comb = imresize(blendederr_comb, indiv_size, 'lanczos3');
     figure(121); imagesc(density_map_comb); axis image; hold on;
-    plot(fovea_coords(1)*.25, fovea_coords(2)*.25, 'r*')
+    plot(fovea_coords(1)*downsample_factor, fovea_coords(2)*downsample_factor, 'r*')
     hold off;
     
     % Put the dataset it the position we had it before.
@@ -238,23 +315,82 @@ for f=fList
     indiv_shifted_density(indiv_shifted_density==0) = NaN;
     indiv_shifted_confidence(indiv_shifted_confidence==0) = NaN;
 
-    
-    
-    % Create and extract total cone annuli.    
-    [colmesh, rowmesh] = meshgrid(1:size(indiv_shifted_density,2), 1:size(indiv_shifted_density,1));
-    
-    distmesh = sqrt((colmesh-global_fovea_coords(1)).^2 + ...
-                    (rowmesh-global_fovea_coords(2)).^2);
 
+    [colmesh, rowmesh] = meshgrid(1:size(indiv_shifted_density,2), 1:size(indiv_shifted_density,1));
+    colmesh = colmesh-global_fovea_coords(1);
+    rowmesh = rowmesh-global_fovea_coords(2);
+    horzmask = abs(colmesh)>=abs(rowmesh);
+    vertmask = abs(colmesh)<abs(rowmesh);
+
+    distmesh = sqrt(colmesh.^2 + rowmesh.^2);
     maxdist = max(distmesh(:));
+
+    colmesh_mm = colmesh.*(downsamp_scaling*persub_micronsperdegree(f))/1000;
+    rowmesh_mm = rowmesh.*(downsamp_scaling*persub_micronsperdegree(f))/1000;
+
+    clear rowmesh colmesh
+
     radius = 5; %In pixels
+
+    % Extract all horizontal-dominant and vertical-dominant data for
+    % fitting.
+    horzpolar = imcart2pseudopolar(indiv_shifted_density.*horzmask, 1, 0.5,global_fovea_coords,'makima',0,maxstriplen);
+    horzpolar(horzpolar==0) = NaN;
+    horzpolar = movmean(mean(horzpolar,'omitnan'), radius);
+    vertpolar = imcart2pseudopolar(indiv_shifted_density.*vertmask, 1, 0.5,global_fovea_coords,'makima',0,maxstriplen);
+    vertpolar(vertpolar==0) = NaN;
+    vertpolar = movmean(mean(vertpolar,'omitnan'), radius);
     
+    plot(mm_position,horzpolar,mm_position,vertpolar)
+    hold on;
+
+    [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',10);
+    locs = locs(pks>3000);
+    pks = pks(pks>3000);
+    horzcutoff = locs(end);
+    plot(mm_position(horzcutoff),pks(end),'b*')
+
+    [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',10);
+    locs = locs(pks>3000);
+    pks = pks(pks>3000);
+    vertcutoff = locs(end);
+    plot(mm_position(vertcutoff),pks(end),'r*')
+%     hold off;
+    drawnow;
+    
+    horzpolar(1:horzcutoff) = NaN;
+    vertpolar(1:vertcutoff) = NaN;
+    all_mm = [fliplr(-mm_position) mm_position];
+    allpolar = [fliplr(vertpolar) horzpolar]/max([fliplr(vertpolar) horzpolar]);
+
+    horz_mm_position = mm_position(horzcutoff:end);
+    horzpolar = horzpolar(horzcutoff:end);
+    vert_mm_position = mm_position(vertcutoff:end);
+    vertpolar = vertpolar(vertcutoff:end);
+
+    allmax = max(max(horzpolar), max(vertpolar));
+    horzpolar=horzpolar/allmax;
+    vertpolar=vertpolar/allmax;
+
+
+    ceoffs = fitLinkedCauchy(horz_mm_position, horzpolar,vert_mm_position,vertpolar);
+    
+    fitted_density = ceoffs(1)./((1+(colmesh_mm./ceoffs(3)).^2+(rowmesh_mm./ceoffs(7)).^2)) + ...
+                    ceoffs(2)./((1+(colmesh_mm./ceoffs(4)).^2+(rowmesh_mm./ceoffs(8)).^2));
+
+    fitted_density  = allmax.*fitted_density ; % 'Un-normalize' the values
+
+
+    % Create and extract total cone annuli.    
     r=1;    
     radii = 0:radius:maxdist;
     
     micrad = nan(size(radii));
     degrad = nan(size(radii));
     num_cia = nan(size(radii));
+    num_cia_horz = nan(size(radii));
+    num_cia_vert = nan(size(radii));
+    num_cia_sep = nan(size(radii));
     
     parfor r=1:length(radii)-1
     
@@ -263,16 +399,26 @@ for f=fList
         aoi = double(distmesh > radii(r) & distmesh <= radii(r+1));
         aoi(aoi == 0) = NaN;
         
-        
+        horzaoi = aoi.*horzmask;
+        horzaoi(horzaoi == 0) = NaN;
+        vertaoi = aoi.*vertmask;
+        vertaoi(vertaoi == 0) = NaN;
     
         annular_area = sum(aoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
-        
-        aoi_density = indiv_shifted_density.*aoi;
-%         imagesc(aoi_density)
+        horz_annular_area = sum(horzaoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
+        vert_annular_area = sum(vertaoi(:).*(downsamp_scaling*downsamp_scaling), 'omitnan');
+
+        aoi_density = fitted_density.*aoi;
+        horz_aoi_density = fitted_density.*horzaoi;
+        vert_aoi_density = fitted_density.*vertaoi;
+
         
         degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
         micrad(r) = persub_micronsperdegree(f)*degrad(r);
         num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
+        num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
+        num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*vert_annular_area;
+        num_cia_sep(r) = num_cia_horz(r) + num_cia_vert(r);
         
 %         r=r+1;
 %         inner_rad = inner_rad + radius;
@@ -281,17 +427,23 @@ for f=fList
     numcones_degrad{f} = degrad;
     numcones_micrad{f} = micrad;
     num_cones_in_annulus{f} = num_cia;
+    num_cones_in_annulus_sep{f} = num_cia_sep;
     
     tot_cones = cumsum(num_cones_in_annulus{f},'omitnan');
     tot_cones(isnan(num_cia)) = NaN;
     
     num_cones_in_annulus{f} = tot_cones;
+
+    tot_cones = cumsum(num_cones_in_annulus_sep{f},'omitnan');
+    tot_cones(isnan(num_cia)) = NaN;
+
+    num_cones_in_annulus_sep{f} = tot_cones;
     
     figure(12); 
     subplot(2,1,1);hold on;
-    plot(numcones_degrad{f}, tot_cones);
+    plot(numcones_degrad{f}, num_cones_in_annulus{f});
     subplot(2,1,2);hold on;
-    plot(numcones_micrad{f}, tot_cones);
+    plot(numcones_micrad{f}, num_cones_in_annulus{f});
     drawnow;
 
     
