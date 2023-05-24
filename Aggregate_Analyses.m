@@ -12,7 +12,7 @@ individual_path = getparent(globalpath,2,'full');
 load(fullfile(globalpath, agg_fName));
 
 % Find the micron/pixel equivalent to deg/pix
-[~,~,lut] = determine_scaling(individual_path,fNames,[],'degrees');
+[scalinginfo,~,lut] = determine_scaling(individual_path,fNames,[],'microns (mm density)');
 persub_micronsperdegree = (291*lut{2})/24;
 
 
@@ -214,6 +214,11 @@ hold off;
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.png']) );
 
+numcones_micrad = cell(size(fList));
+numcones_degrad = cell(size(fList));
+num_cones_in_annulus = cell(size(fList));
+num_cones_in_annulus_sep = cell(size(fList));
+
 %% Perform a pairwise analysis of the difference of each person from the average strips
 figure(12); clf; hold on;
 xlabel('Radial distance (degrees)')
@@ -224,13 +229,9 @@ ylabel('Density (cells/degrees^2)')
 
 fList = 1:length(fNames);
 % fList = [36,40,45,49];
-numcones_micrad = cell(size(fList));
-numcones_degrad = cell(size(fList));
-num_cones_in_annulus = cell(size(fList));
-num_cones_in_annulus_sep = cell(size(fList));
 
 
-for f=fList
+for f=1:length(fNames)
     disp(['Loading, downsampling and prepping: ' fNames{f}])
     load( fullfile(individual_path, fNames{f}), 'density_map_comb', 'blendederr_comb','fovea_coords', 'imsize');
     
@@ -345,17 +346,17 @@ for f=fList
     hold on;
 
     [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',10);
-    locs = locs(pks>3000);
-    pks = pks(pks>3000);
+    locs = locs(pks>4000);
+    pks = pks(pks>4000);
     horzcutoff = locs(end);
     plot(mm_position(horzcutoff),pks(end),'b*')
 
     [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',10);
-    locs = locs(pks>3000);
-    pks = pks(pks>3000);
+    locs = locs(pks>4000);
+    pks = pks(pks>4000);
     vertcutoff = locs(end);
     plot(mm_position(vertcutoff),pks(end),'r*')
-%     hold off;
+    hold off;
     drawnow;
     
     horzpolar(1:horzcutoff) = NaN;
@@ -382,8 +383,8 @@ for f=fList
 
 
     % Create and extract total cone annuli.    
-    r=1;    
-    radii = 0:radius:maxdist;
+    r=5;    
+    radii = 0:r:maxstriplen;
     
     micrad = nan(size(radii));
     degrad = nan(size(radii));
@@ -412,6 +413,9 @@ for f=fList
         horz_aoi_density = fitted_density.*horzaoi;
         vert_aoi_density = fitted_density.*vertaoi;
 
+%         r*downsamp_scaling          
+%         mean(aoi_density(:), 'omitnan').*annular_area
+%         sum(aoi_density(:).*(downsamp_scaling*downsamp_scaling), 'omitnan')
         
         degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
         micrad(r) = persub_micronsperdegree(f)*degrad(r);
@@ -469,5 +473,5 @@ for j=1:length(indarr)-1
     dattable.(fNames{j}) = combined(:,beginv:endv);
 
 end
-writetable(dattable, 'totalcones_table.csv');
+writetable(dattable, '05232023_totalcones_table.csv');
 % figure(13); hold off;

@@ -168,31 +168,32 @@ else
 end
 
 numind = size(roi,1)*size(roi,2);
-pixel_spac = nan(size(roi));
-confidence = nan(size(roi));
+par_pixel_spac = nan(size(roi));
+par_confidence = nan(size(roi));
 
 
-% tic;
-for r=1:length(pixel_spac(:))
-    if ~isempty(roi{r})        
+goodr = find(~cellfun(@isempty,roi))';
+
+for i=1:length(goodr)
+    r=goodr(i);
+    
+    if supersampling == true% We don't want this run on massive images (RAM sink)
+
+        padsize = roi_size(1)*6; % For reasoning, cite this: https://arxiv.org/pdf/1401.2636.pdf
+        padsize = (padsize-roi_size(1))/2 + 1;
+
+        power_spect = fftshift(fft2( padarray(roi{r}, [padsize padsize]) ));
+        power_spect = imresize(log10(abs(power_spect).^2),[2048 2048]);
+        rhostart = ceil(2048/min(im_size)); % Exclude the DC term from our radial average
+    else
+        % Make our hanning window for each ROI?
+        hann_twodee = 1; %hanning(size(roi{r},1))*hanning(size(roi{r},1))';
         
-        if supersampling == true% We don't want this run on massive images (RAM sink)
-
-            padsize = roi_size(1)*6; % For reasoning, cite this: https://arxiv.org/pdf/1401.2636.pdf
-            padsize = (padsize-roi_size(1))/2 + 1;
-
-            power_spect = fftshift(fft2( padarray(roi{r}, [padsize padsize]) ));
-            power_spect = imresize(log10(abs(power_spect).^2),[2048 2048]);
-            rhostart = ceil(2048/min(im_size)); % Exclude the DC term from our radial average
-        else
-            % Make our hanning window for each ROI?
-            hann_twodee = 1; %hanning(size(roi{r},1))*hanning(size(roi{r},1))';
-            
-            power_spect = fftshift(fft2( hann_twodee.*double(roi{r}) ));
-            power_spect = log10(abs(power_spect).^2);
-            rhostart=1; % Exclude the DC term from our radial average
-        end
-        
+        power_spect = fftshift(fft2( hann_twodee.*double(roi{r}) ));
+        power_spect = log10(abs(power_spect).^2);
+        rhostart=1; % Exclude the DC term from our radial average
+    end
+    
 %         figure(100); imagesc(roi{r}); axis image;
 %         power_spect_export = power_spect-min(power_spect(:));
 %         power_spect_export = power_spect_export./max(power_spect_export(:));
@@ -200,38 +201,43 @@ for r=1:length(pixel_spac(:))
 % 
 %         imwrite(uint8(power_spect_export),['pwr_spect ' num2str(r) '.tif']);
 
-        rhosampling = .5;
-        thetasampling = 1;
+    rhosampling = .5;
+    thetasampling = 1;
 
-        [polarroi, power_spect_radius] = imcart2pseudopolar(power_spect, rhosampling, thetasampling,[],'makima' , rhostart);
-        polarroi = circshift(polarroi,-90/thetasampling,1);
-        %figure(101); imagesc(polarroi); axis image;
-        
-        upper_n_lower = [thetasampling:45 136:225 316:360]/thetasampling;
-        left_n_right = [46:135 226:315]/thetasampling;
-        upper_n_lower_fourierProfile = mean(polarroi(upper_n_lower,:));
-        left_n_right_fourierProfile = mean(polarroi(left_n_right,:));
-        fullfourierProfile = mean(polarroi);
+    [polarroi, power_spect_radius] = imcart2pseudopolar(power_spect, rhosampling, thetasampling,[],'makima' , rhostart);
+    polarroi = circshift(polarroi,-90/thetasampling,1);
+    %figure(101); imagesc(polarroi); axis image;
+    
+    upper_n_lower = [thetasampling:45 136:225 316:360]/thetasampling;
+    left_n_right = [46:135 226:315]/thetasampling;
+    upper_n_lower_fourierProfile = mean(polarroi(upper_n_lower,:));
+    left_n_right_fourierProfile = mean(polarroi(left_n_right,:));
+    fullfourierProfile = mean(polarroi);
 %         figure(101); plot(upper_n_lower_fourierProfile); axis image;
 
-        if strcmp(row_or_cell,'cell')  && ~all(isinf(left_n_right_fourierProfile)) && ~all(isnan(left_n_right_fourierProfile))
-            
-            [pixel_spac(r), ~, confidence(r)] = fourierFit(left_n_right_fourierProfile,[], false);
+    if strcmp(row_or_cell,'cell')  && ~all(isinf(left_n_right_fourierProfile)) && ~all(isnan(left_n_right_fourierProfile))
+        
+        [par_pixel_spac(i), ~, par_confidence(i)] = fourierFit(left_n_right_fourierProfile,[], false);
 %             [pixel_spac(r), confidence(r)] = fourierFit_rough(left_n_right_fourierProfile, true)
 %             confidence(r)
-            pixel_spac(r) = 1/ (pixel_spac(r) / ((power_spect_radius*2)/rhosampling));
-            
-        elseif strcmp(row_or_cell,'row') && ~all(isinf(upper_n_lower_fourierProfile)) && ~all(isnan(upper_n_lower_fourierProfile))
+        par_pixel_spac(i) = 1/ (par_pixel_spac(i) / ((power_spect_radius*2)/rhosampling));
+        
+    elseif strcmp(row_or_cell,'row') && ~all(isinf(upper_n_lower_fourierProfile)) && ~all(isnan(upper_n_lower_fourierProfile))
 
-            [pixel_spac(r), ~, confidence(r)] = fourierFit(upper_n_lower_fourierProfile,[], false);
-            pixel_spac(r) = 1/ (pixel_spac(r) / ((power_spect_radius*2)/rhosampling));
+        [par_pixel_spac(i), ~, par_confidence(i)] = fourierFit(upper_n_lower_fourierProfile,[], false);
+        par_pixel_spac(i) = 1/ (par_pixel_spac(i) / ((power_spect_radius*2)/rhosampling));
 
-        else
-            pixel_spac(r) = NaN;
-        end
+    else
+        par_pixel_spac(i) = NaN;
     end
+    
 end
-% toc;
+
+pixel_spac = nan(size(roi));
+confidence = nan(size(roi));
+
+pixel_spac(goodr) = par_pixel_spac(1:length(goodr));
+confidence(goodr) = par_confidence(1:length(goodr));
 
 avg_pixel_spac = mean(pixel_spac(~isnan(pixel_spac)) );
 %std_pixel_spac = std(pixel_spac(~isnan(pixel_spac)));

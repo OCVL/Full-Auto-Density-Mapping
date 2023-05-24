@@ -18,6 +18,8 @@ thisfolder = uigetdir(thisfolder, 'Select the folders containing the montages yo
 
 [lutfname, lutfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
 
+unit='microns (mm density)';
+
 %%
 restartf = 1;
 endf = length(folderList);
@@ -34,9 +36,9 @@ for f=restartf:endf
             disp(['***** Running analysis on: ' confocaldir ' *****']);
             fNames = read_folder_contents(confocaldir,'tif');
 
-            [ scalinginfo, ~, lut ]=determine_scaling(confocaldir, fNames, fullfile(lutfolder,lutfname) ,'degrees');
+            [ scalinginfo, ~, lut ]=determine_scaling(confocaldir, fNames, fullfile(lutfolder,lutfname) ,unit);
 
-            [confocal_coords, mask]=Foveated_Montage_DFT_Analysis(confocaldir, fNames, scalinginfo, 'degrees', lut, true);
+            [confocal_coords, mask]=Foveated_Montage_DFT_Analysis(confocaldir, fNames, scalinginfo, unit, lut, true);
             something=true;
         end
         close all;
@@ -45,9 +47,9 @@ for f=restartf:endf
             disp(['***** Running analysis on: ' splitdir ' *****']);
             fNames = read_folder_contents(splitdir,'tif');
 
-            [ scalinginfo, ~, lut ]=determine_scaling(splitdir, fNames, fullfile(lutfolder,lutfname) ,'degrees');
+            [ scalinginfo, ~, lut ]=determine_scaling(splitdir, fNames, fullfile(lutfolder,lutfname) ,unit);
 
-            Foveated_Montage_DFT_Analysis(splitdir, fNames, scalinginfo, 'degrees', lut, true, confocal_coords, mask);
+            Foveated_Montage_DFT_Analysis(splitdir, fNames, scalinginfo, unit, lut, true, confocal_coords, mask);
             something=true;
         end
                 

@@ -137,7 +137,12 @@ end
 
 method = 'mean';
 
-roi_size_fcn = create_roi_size_fcn(128,384,1/scaling,10/scaling); % 1 to 10 degrees.
+switch unit
+    case 'microns (mm density)'
+        roi_size_fcn = create_roi_size_fcn(128,384,1/scaling,3000/scaling); % 1 to 3000 um.
+    case 'degrees'
+        roi_size_fcn = create_roi_size_fcn(128,384,1/scaling,10/scaling); % 1 to 10 degrees.
+end
 
 
 %% Determine the DFT distance for each image in the montage
@@ -182,12 +187,13 @@ if strcmp(method, 'median')
         end
 
         im = double(imresize(im, imsize));
-        
         if ~isempty(mask)
             im = im.*double(mask);
         end
 
-        [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing_median(im, roi_size_fcn, corase_fov_coords);    
+        if ~all(im(:) == 0)
+            [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing_median(im, roi_size_fcn, corase_fov_coords);    
+        end
 
     end
 else
@@ -204,7 +210,9 @@ else
             im = im.*double(mask);
         end
 
-        [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing(im, roi_size_fcn, corase_fov_coords);    
+        if ~all(im(:) == 0)
+            [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing(im, roi_size_fcn, corase_fov_coords);    
+        end
 
     end
 end
