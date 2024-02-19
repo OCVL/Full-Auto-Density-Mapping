@@ -94,7 +94,7 @@ for f=1:length(fNames)
     % density.
     [X, Y] = meshgrid(1:size(density_map_comb,2), 1:size(density_map_comb,1));
 
-    farrangemask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 2.5/scaling;   
+    farrangemask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 800/scaling; %2.5/scaling;   
     
     confcombfar = blendederr_comb.*~farrangemask;
     confcombfar(confcombfar==0)=NaN;
@@ -104,7 +104,7 @@ for f=1:length(fNames)
     confcombclose(confcombclose==0)=NaN;
     lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01])
 
-    closerangemask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 1.25/scaling;
+    closerangemask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 400/scaling;%1.25/scaling;
     denscombclose = density_map_comb.*closerangemask;
     denscombclose(denscombclose==0)=NaN;
     densclose = quantile(denscombclose(~isnan(denscombclose)), [0.5])
@@ -112,7 +112,7 @@ for f=1:length(fNames)
     % If we're looking at data with these filenames, drop their long
     % distance data as its quality is questionable.
     if contains(fNames{f},'11101') || contains(fNames{f},'11092')
-        good_data_mask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 8/scaling;
+        good_data_mask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 2400/scaling; %8/scaling;
         density_map_comb = density_map_comb .*good_data_mask;
         blendederr_comb = blendederr_comb .*good_data_mask;
     end

@@ -80,6 +80,10 @@ for f=restartf:endf
         
         density_map = sqrt(3)./ (2*(weightedmap*scaling).^2);
         density_map(isinf(density_map))=0;
+
+        if strcmp(unit,'microns (mm density)')
+            density_map = (1000^2).*density_map;
+        end
         
         densim(imbox(2):imbox(2)+imbox(4), imbox(1):imbox(1)+imbox(3)) = density_map;
         

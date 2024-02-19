@@ -68,7 +68,7 @@ for f=restartf:endf
     restartf=f;
     confocal_coords=[];
     something=false;
-    if isdir(f)
+    if isdir{f}
         confocaldir=fullfile(thisfolder, folderList{f},'confocal','Results_foveated');
         foveadir=fullfile(thisfolder, folderList{f},'confocal','Results_fovea_map');
         splitdir=fullfile(thisfolder, folderList{f},'split detection','Results_foveated');
@@ -298,10 +298,6 @@ for f=restartf:endf
 %                 
 %                 density_map_comb(blendederr_comb<=highconf) = NaN;     
 %                 blendederr_comb(blendederr_comb<=highconf) = NaN;
-                
-                
-                
-                           
                 
                 clear blendederrim_split blendederrim_conf 
                 
