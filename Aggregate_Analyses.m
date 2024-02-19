@@ -1,7 +1,12 @@
 clear
 close all;
 
-% Find the global dataset
+% Add our support libraries to the path.
+basePath = which('Aggregate_Analyses.m');
+[basePath ] = fileparts(basePath);
+path(path, fullfile(basePath,'lib'));
+
+% Find the global dataset.
 [agg_fName, globalpath ]=uigetfile(fullfile(pwd,'*.mat'),'Select the aggregate file.');
 
 % Individuals will be above this.

@@ -65,8 +65,6 @@ function [blendedim, fovea_coords, validmask]=Montage_DFT_Analysis(thispath, fNa
 % same folder you ran from alongside a mat file that contains the results.
 
 
-% clear;
-% close all;
 if ~exist('thispath','var')
     [fNames, thispath ]=uigetfile(fullfile(pwd,'*.tif'),'Select all files you wish to analyze from a SINGLE subject.', 'MultiSelect', 'on');
 end

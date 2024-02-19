@@ -1,10 +1,15 @@
 %% Robert F Cooper
-% 1/13/21
+% Created 6/02/21
 %
 % This script's sole job is to run multiple montages in series; to save time, 
 % instead of operating on individual files though, it operates on a series
 % of folders.
 
+
+% Add our support libraries to the path.
+basePath = which('Multi_Fovea_DFT_Analysis.m');
+[basePath ] = fileparts(basePath);
+path(path, fullfile(basePath,'lib')); 
 
 thisfolder = pwd;
 

@@ -16,6 +16,12 @@
 %
 clear;
 close all force;
+
+% Add our support libraries to the path.
+basePath = which('DFT_Aggregator.m');
+[basePath ] = fileparts(basePath);
+path(path, fullfile(basePath,'lib'));
+
 [fNames,thispath ]=uigetfile(fullfile(pwd,'*.mat'),'Select all montages you wish to combine.', 'MultiSelect', 'on');
 
 if ~all(iscell(fNames))

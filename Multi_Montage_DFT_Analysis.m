@@ -1,16 +1,18 @@
 %% Robert F Cooper
-% 1/13/21
+% Created 1/13/21
 %
 % This script's sole job is to run multiple montages in series; to save time, 
 % instead of operating on individual files though, it operates on a series
 % of folders.
 clear;
 close all;
-folderList = {};
+
+% Add our support libraries to the path.
+basePath = which('Multi_Montage_DFT_Analysis.m');
+[basePath ] = fileparts(basePath);
+path(path, fullfile(basePath,'lib')); 
 
 thisfolder = pwd;
-
-
 
 thisfolder = uigetdir(thisfolder, 'Select the folders containing the montages you wish to assess.');
     
@@ -19,6 +21,15 @@ thisfolder = uigetdir(thisfolder, 'Select the folders containing the montages yo
 [lutfname, lutfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
 
 unit='microns (mm density)';
+liststr = {'microns (mm density)','degrees','arcmin'};
+[selectedunit, oked] = listdlg('PromptString','Select output units:',...
+                                      'SelectionMode','single',...
+                                      'ListString',liststr);
+if oked == 0
+    error('Cancelled by user.');
+end
+
+unit = liststr{selectedunit};
 
 %%
 restartf = 1;
@@ -36,7 +47,7 @@ for f=restartf:endf
             disp(['***** Running analysis on: ' confocaldir ' *****']);
             fNames = read_folder_contents(confocaldir,'tif');
 
-            [ scalinginfo, ~, lut ]=determine_scaling(confocaldir, fNames, fullfile(lutfolder,lutfname) ,unit);
+            [ scalinginfo, unit, lut ]=determine_scaling(confocaldir, fNames, fullfile(lutfolder,lutfname) ,unit);
 
             [confocal_coords, mask]=Foveated_Montage_DFT_Analysis(confocaldir, fNames, scalinginfo, unit, lut, true);
             something=true;
@@ -90,7 +101,9 @@ for f=restartf:endf
                 blendederrim_fov = zeros(size(densim));
                 blendederrim_fov(imbox(2):imbox(2)+imbox(4), imbox(1):imbox(1)+imbox(3)) = confmap./summap;
                 blendederrim_fov(isnan(blendederrim_fov)) = 0;
+
                 foveal_data_mask = blendederrim_fov ~= 0;
+                fovea_blend_range = 64;
                 fovea_merge_loc = floor(min(size(confmap))/2); % Set the max merge loc based on the short edge of the fovea image.
                 density_map_fov = densim;
                 clear densim imbox confmap summap
@@ -115,9 +128,6 @@ for f=restartf:endf
                 errsplitpolar(errsplitpolar<=0) = NaN;
                 
                 
-                drawnow;
-                
-                
                 fovannuli = zeros(size(blendederrim_fov));
                 confannuli = zeros(size(blendederrim_conf));
                 splitannuli = zeros(size(blendederrim_conf));
@@ -125,15 +135,13 @@ for f=restartf:endf
                 avgdifferr = (mean(errconfpolar,'omitnan')-mean(errsplitpolar,'omitnan'))./ ...
                              ( (mean(errsplitpolar,'omitnan') + mean(errconfpolar,'omitnan'))/2 );
 
-                figure(5); plot(mean(errconfpolar,'omitnan')); hold on; plot(mean(errsplitpolar,'omitnan')); plot(mean(errfovpolar,'omitnan')); plot(avgdifferr);  hold off; 
-                axis([0 length(errconfpolar) -2 2]); legend('Confocal Confidence', 'Split Confidence', 'foveal', '% diff');
-                drawnow;
-                saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_polarerror.png') );
+                % figure(5); plot(mean(errconfpolar,'omitnan')); hold on; plot(mean(errsplitpolar,'omitnan')); plot(mean(errfovpolar,'omitnan')); plot(avgdifferr);  hold off; 
+                % axis([0 length(errconfpolar) -2 2]); legend('Confocal Confidence', 'Split Confidence', 'foveal', '% diff');
+                % drawnow;
+                % saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_polarerror.png') );
+                % 
                 
-                
-                fovea_blend_range = 64;
-%                 fovea_merge_loc = find(any(isnan(errfovpolar),1),1,'first')-fovea_blend_range;
-                
+
                 offset = find((avgdifferr>=0) == 1, 1, 'first');    
                 
                 MAXOFFSET = 2000;
@@ -158,7 +166,7 @@ for f=restartf:endf
                     mergeloc = confhigh-blendrange;
 
                 else
-                    disp(['Warning: unable to find ideal merging location. Guessing from closest values...']);
+                    disp('Warning: unable to find ideal merging location. Guessing from closest values...');
                     [val, offset] = max(avgdifferr(1:MAXOFFSET));
                     confhigh  = offset; %this needs work.
                     mergeloc = confhigh;
@@ -220,10 +228,7 @@ for f=restartf:endf
                 
                 density_map_conf = (density_map_fov+fovdensity_map_conf)./(fovannuli+conf_to_fovannuli);
                 
-%                 figure(11); subplot(1,2,1); imagesc(density_map_fov); axis image;
-%                 subplot(1,2,2); imagesc(fovdensity_map_conf);axis image;
-%                 
-%                 figure(12); imagesc(density_map_conf); axis image;
+
                 
                 % THEN we merge the confocal to the split.
                 confdisk = strel('disk',mergeloc,0);
@@ -262,13 +267,10 @@ for f=restartf:endf
                                                             diskstartx:end+diffx);
                        
                 splitannuli = abs(1-confannuli);
-
-%                 figure(1); subplot(1,2,1); imagesc(confannuli); axis image;
                 
+                % Blur over the blend range
                 confannuli = imgaussfilt(confannuli, blendrange/2);
                 splitannuli = imgaussfilt(splitannuli, blendrange/2);
-
-%                 subplot(1,2,2); imagesc(confannuli); axis image;
                 
                 % Weight each map against its filtered annuli
                 density_map_conf = confannuli.*density_map_conf;
@@ -284,37 +286,25 @@ for f=restartf:endf
                 density_map_comb = (density_map_conf+density_map_split)./(confannuli+splitannuli);
                 
                 clear density_map_conf density_map_split
-                
-%                 denspolar = imcart2pseudopolar(density_map_comb, 1, .5, fovea_coords,'makima' , 0);
-%                 denspolar(denspolar==0) = NaN;
+
 
                 blendederrim_conf = confannuli.*blendederrim_conf;
                 blendederrim_split = splitannuli.*blendederrim_split;
                 
                 blendederr_comb = (blendederrim_conf+blendederrim_split)./(confannuli+splitannuli);
                 
-                % Find our new lowest low, ignoring NaNs.
-%                 highconf = quantile(blendederr_comb(~isnan(blendederr_comb)), 0.01);
-%                 
-%                 density_map_comb(blendederr_comb<=highconf) = NaN;     
-%                 blendederr_comb(blendederr_comb<=highconf) = NaN;
-                
                 clear blendederrim_split blendederrim_conf 
                 
                 
                 figure(3); imagesc(density_map_comb); axis image;
                 drawnow;
-%                 pause;
                 saveas(gcf, fullfile(thisfolder, folderList{f},'merged_density.png') );
-%                 figure(4); plot(mean(denspolar, 'omitnan')); title('Merged density average');
                 figure(4);
                 imagesc(blendederr_comb); axis image;
                 drawnow;
                 saveas(gcf, fullfile(thisfolder, folderList{f},'merged_error.png') );
-%                 close all;
                 
                 
-%                 safesave(fullfile(confocaldir, fNameC{1}), fullfile(thisfolder, folderList{f}, strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb, confannuli, splitannuli);
                 safesave_sm(fullfile(confocaldir, fNameC{1}), fullfile(thisfolder, 'Aggregation_Analysis', strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb);
                 clear density_map_comb confannuli splitannuli
             end
