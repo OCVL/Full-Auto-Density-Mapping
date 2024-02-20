@@ -76,7 +76,6 @@ end
 if  ~exist('scaling','var') || ~exist('unit','var') || ~exist('lut','var')
     [scaling, unit, lut] = determine_scaling(pwd,fNames);
 end
-scaling = unique(scaling);
 rel_scale = 1;
 
 
@@ -445,7 +444,7 @@ mkdir(result_path)
 
 
 %%
-save( fullfile(result_path,[prefix 'Fouriest_Result.mat']), 'density_map', 'blendederrim','fovea_coords', 'unit', 'scaling','-v7.3');
+save( fullfile(result_path,[prefix 'Fouriest_Result.mat']), 'density_map', 'blendederrim','fovea_coords', 'imsize', 'unit', 'scaling','-v7.3');
 
 %% Show figures
 
@@ -482,8 +481,8 @@ scaled_density = density_map-lower01;
 scaled_density = 255.*(scaled_density./ upper99 );
 scaled_density(scaled_density>255) = 255;
 
-figure(5); imagesc( density_map.*imclose(threshold_mask,ones(11)).*foveamask ); axis image; colorbar;
-caxis([lower01 upper99]);
+% figure(5); imagesc( density_map.*imclose(threshold_mask,ones(11)).*foveamask ); axis image; colorbar;
+% caxis([lower01 upper99]);
 imwrite( uint8(scaled_density.*imclose(threshold_mask,ones(11)).*foveamask),parula(256),fullfile(result_path, [prefix 'thresh_montage_density_' num2str(scaling,'%5.2f') '.tif']))
 clear scaled_density;
 

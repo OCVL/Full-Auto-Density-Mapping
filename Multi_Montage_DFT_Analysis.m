@@ -68,14 +68,14 @@ for f=restartf:endf
             fNames = read_folder_contents(confocaldir,'tif');
 
             [ scalinginfo, unit, lut ]=determine_scaling(confocaldir, fNames, fullfile(lutfolder,lutfname) ,unit);
-
+            
+            scalinginfo = unique(scalinginfo);
+            if length(scalinginfo) > 1
+                error('We should only have 1 scaling value that matches all data in this folder. Make sure all data is scaled the same in each folder.')
+            end
 
             % Run an analysis on the selected foveal image, if the file
             % exists.
-            % splitlist=split(filelist{f,1},'_');
-            % filedir=fullfile(lutfolder, [splitlist{2} '_' splitlist{4}],'confocal');
-
-            
             if ~isempty(fovea_filenames)                
                 fov_ind = find(cellfun(@any, cellfun(@(s) strcmp(s, fovea_filenames), fNames,'UniformOutput', false)), 1, 'first');
                 if isempty(fov_ind)
@@ -98,6 +98,10 @@ for f=restartf:endf
             fNames = read_folder_contents(splitdir,'tif');
 
             [ scalinginfo, ~, lut ]=determine_scaling(splitdir, fNames, fullfile(lutfolder,lutfname) ,unit);
+            scalinginfo = unique(scalinginfo);
+            if length(scalinginfo) > 1
+                error('We should only have 1 scaling value that matches all data in this folder. Make sure all data is scaled the same in each folder.')
+            end
 
             Foveated_Montage_DFT_Analysis(splitdir, fNames, scalinginfo, unit, lut, true, confocal_coords, mask);
             something=true;
@@ -112,7 +116,7 @@ end
 
 %% Process each of the above, merging their pieces together
 restartf=1;
-endf=length(folderList);
+endf=1; %length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
@@ -133,7 +137,7 @@ for f=restartf:endf
                 
                 
                 if fovfname ~=0   
-                    disp(['***** Merging data from: ' fNameCF{1} ', ' confocaldir ' and\n ' splitdir ' *****']);
+                    fprintf('***** Merging data from: %s,\n %s,\n and %s *****\n', fNameCF{1}, fNameC{1}, fNameS{1});
                     load(fullfile(foveadir, fNameCF{1}), 'densim', 'imbox', 'confmap', 'summap');
                     
                     densim = densim(:,:,1);
@@ -148,7 +152,7 @@ for f=restartf:endf
                     density_map_fov = densim;
                     clear densim imbox confmap summap
                 else
-                    disp(['***** Merging data from: ' confocaldir ' and\n ' splitdir ' *****']);
+                    fprintf('***** Merging data from: %s and %s *****\n', fNameC{1}, fNameS{1});
                 end
                 
                 load(fullfile(confocaldir, fNameC{1}), 'density_map', 'blendederrim','fovea_coords', 'unit', 'scaling');
@@ -348,8 +352,9 @@ for f=restartf:endf
                 % drawnow;
                 % saveas(gcf, fullfile(thisfolder, folderList{f},'merged_error.png') );
                 
-                
-                safesave_sm(fullfile(confocaldir, fNameC{1}), fullfile(thisfolder, 'Aggregation_Analysis', strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb);
+                mkdir(fullfile(thisfolder, 'All_Analyses'))
+                safesave_sm(fullfile(confocaldir, fNameC{1}), ...
+                    fullfile(thisfolder, 'All_Analyses', strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb);
                 clear density_map_comb confannuli splitannuli
             end
         end
@@ -366,7 +371,7 @@ function []= safesave_sm(baseload, newsave, denscomb, errcomb)
     load(baseload);
     density_map_comb = denscomb;
     blendederr_comb = errcomb;
-    save(newsave, 'density_map_comb', 'blendederr_comb', 'fovea_coords', 'imsize', 'scaling',  '-v7.3')
+    save(newsave, 'density_map_comb', 'blendederr_comb', 'fovea_coords', 'imsize', 'unit', 'scaling',  '-v7.3')
 end
 
 function []= safesave(baseload, newsave, denscomb, errcomb, confannuli, splitannuli)

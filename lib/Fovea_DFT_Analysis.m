@@ -65,8 +65,8 @@ function [] = Fovea_DFT_Analysis(fovea_path, fovea_file, scaling, unit, lut, sma
     end
     
     foveaim = imread(fullfile(fovea_path, fovea_file));
-    
-    imsize = round(size(foveaim).*rel_scale);
+    imsize = size(foveaim);
+    imsize = round(imsize(1:2).*rel_scale);
     
     if contains(fovea_file,'11102_OD')  % This factor was added to account for trial lenses.
         imsize = round( imsize(1:2) * 1.13 );
