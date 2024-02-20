@@ -1,20 +1,4 @@
 function [blendedim, fovea_coords, validmask]=Montage_DFT_Analysis(thispath, fNames, scaling, unit, lut, smallestscale, roisize)
-% Copyright (C) 2019 Robert F Cooper
-% 
-%     This program is free software: you can redistribute it and/or modify
-%     it under the terms of the GNU General Public License as published by
-%     the Free Software Foundation, either version 3 of the License, or
-%     (at your option) any later version.
-% 
-%     This program is distributed in the hope that it will be useful,
-%     but WITHOUT ANY WARRANTY; without even the implied warranty of
-%     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-%     GNU General Public License for more details.
-% 
-%     You should have received a copy of the GNU General Public License
-%     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-%
-%
 % Running this function will ask you to select the set of montage images that
 % you wish to analyze. Montage images will have a single layer within a montage
 % placed within an image the size of the montage canvas.
@@ -63,6 +47,21 @@ function [blendedim, fovea_coords, validmask]=Montage_DFT_Analysis(thispath, fNa
 % The software will then run, showing the spacing montage, the density montage,
 % the confidence montage, and the sum map. It will also save them to disk in the
 % same folder you ran from alongside a mat file that contains the results.
+%
+% Copyright (C) 2024 Robert F Cooper
+% 
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+%     http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
 
 
 if ~exist('thispath','var')
@@ -127,9 +126,6 @@ if ~isempty(lut) % If we didn't directly input a scale,
     end
 end
 
-
-method = 'mean';
-
 %% Determine the DFT distance for each image in the montage
 im_spac_map = cell(length(fNames),1);
 im_err_map = cell(length(fNames),1);
@@ -148,9 +144,16 @@ end
 
 fnamesplits = strsplit(fNames{1},'_');
 prefix=[];
-for f=1:5 % build our prefix.
+if length(fnamesplits)<4
+    numprefixes = length(fnamesplits);
+else
+    numprefixes = 4;
+end
+
+for f=1:numprefixes % build our prefix, using the first 4 things separated by underscores, or the full filename, whichever comes first.
     prefix = [prefix fnamesplits{f} '_'];
 end
+
 
 if isempty(gcp)
     myPool=parpool;
@@ -158,105 +161,52 @@ else
     myPool=gcp('nocreate');
 end
 
-if strcmp(method, 'median')
-    parfor i=1:length(fNames)
-        fNames{i}
-        im = imread( fullfile(thispath, fNames{i}) );
+parfor i=1:length(fNames)
+    fNames{i}
+    im = imread( fullfile(thispath, fNames{i}) );
 
-        if size(im,3) >1
-            im = im(:,:,1);
-        end
-
-        im = imresize(im, imsize);
-
-        [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing_median(im, roisize);    
-
+    if size(im,3) >1
+        im = im(:,:,1);
     end
-else
-    parfor i=1:length(fNames)
-        fNames{i}
-        im = imread( fullfile(thispath, fNames{i}) );
 
-        if size(im,3) >1
-            im = im(:,:,1);
-        end
+    im = imresize(im, imsize);
 
-        im = imresize(im, imsize);
+    [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing(im, roisize, 0, 4);    
 
-        [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing(im, roisize);    
-
-    end
 end
 
 delete(myPool)
 
 %%
-
 blendedim = zeros(imsize(1:2));
 blendederrim = zeros(imsize(1:2));
 sum_map = zeros(imsize(1:2));
 
-if strcmp(method, 'median')
-    %% Median
-    for i=1:length(imbox)
 
-        thisbox = imbox{i};
-        if ~isempty(thisbox)
-            thismap = im_spac_map{i};
-            thiserrmap = im_err_map{i};
-            thissummap = im_sum_map{i};
+for i=1:length(imbox)
 
-            thismap(isnan(thismap))=0;
-            thiserrmap(isnan(thiserrmap))=0;
+    thisbox = imbox{i};
+    if ~isempty(thisbox)
+        thismap = im_spac_map{i};
+        thiserrmap = im_err_map{i};
+        thissummap = im_sum_map{i};
 
-            blendedim( thisbox(2):thisbox(2)+thisbox(4)-1,...
-                       thisbox(1):thisbox(1)+thisbox(3)-1 ) = blendedim( thisbox(2):thisbox(2)+thisbox(4)-1,...
-                                                                       thisbox(1):thisbox(1)+thisbox(3)-1 ) + thismap.*thissummap;
+        blendedim( thisbox(2):thisbox(2)+thisbox(4),...
+                   thisbox(1):thisbox(1)+thisbox(3) ) = blendedim( thisbox(2):thisbox(2)+thisbox(4),...
+                                                                   thisbox(1):thisbox(1)+thisbox(3) ) + thismap;
 
-            sum_map( thisbox(2):thisbox(2)+thisbox(4)-1,...
-                     thisbox(1):thisbox(1)+thisbox(3)-1 ) = sum_map( thisbox(2):thisbox(2)+thisbox(4)-1,...
-                                                                   thisbox(1):thisbox(1)+thisbox(3)-1 ) + thissummap;
+        sum_map( thisbox(2):thisbox(2)+thisbox(4),...
+                 thisbox(1):thisbox(1)+thisbox(3) ) = sum_map( thisbox(2):thisbox(2)+thisbox(4),...
+                                                               thisbox(1):thisbox(1)+thisbox(3) ) + thissummap;
 
-            blendederrim( thisbox(2):thisbox(2)+thisbox(4)-1,...
-                       thisbox(1):thisbox(1)+thisbox(3)-1 ) = blendederrim( thisbox(2):thisbox(2)+thisbox(4)-1,...
-                                                                       thisbox(1):thisbox(1)+thisbox(3)-1 ) + thiserrmap.*thissummap;
-        end
-
+        blendederrim( thisbox(2):thisbox(2)+thisbox(4),...
+                   thisbox(1):thisbox(1)+thisbox(3) ) = blendederrim( thisbox(2):thisbox(2)+thisbox(4),...
+                                                                   thisbox(1):thisbox(1)+thisbox(3) ) + thiserrmap;   
     end
-    
-    blendedim = blendedim./sum_map;
-    blendederrim = blendederrim./sum_map;
-else
-    %% Mean
-    for i=1:length(imbox)
-
-        thisbox = imbox{i};
-        if ~isempty(thisbox)
-            thismap = im_spac_map{i};
-            thiserrmap = im_err_map{i};
-            thissummap = im_sum_map{i};
-
-    %         weightedim = (thismap./thiserrmap); 
-    %         weightedim(isnan(weightedim)) = 0;% Make sure no NaNs sneak in...
-
-            blendedim( thisbox(2):thisbox(2)+thisbox(4),...
-                       thisbox(1):thisbox(1)+thisbox(3) ) = blendedim( thisbox(2):thisbox(2)+thisbox(4),...
-                                                                       thisbox(1):thisbox(1)+thisbox(3) ) + thismap;%weightedim.*thissummap;
-
-            sum_map( thisbox(2):thisbox(2)+thisbox(4),...
-                     thisbox(1):thisbox(1)+thisbox(3) ) = sum_map( thisbox(2):thisbox(2)+thisbox(4),...
-                                                                   thisbox(1):thisbox(1)+thisbox(3) ) + thissummap;
-
-            blendederrim( thisbox(2):thisbox(2)+thisbox(4),...
-                       thisbox(1):thisbox(1)+thisbox(3) ) = blendederrim( thisbox(2):thisbox(2)+thisbox(4),...
-                                                                       thisbox(1):thisbox(1)+thisbox(3) ) + thiserrmap;   
-        end
-    end
-    
-    blendedim = blendedim./blendederrim;
-    blendederrim = blendederrim./sum_map;
 end
 
+blendedim = blendedim./blendederrim;
+blendederrim = blendederrim./sum_map;
 
 validmask = ~isnan(blendedim);
 
@@ -409,10 +359,6 @@ foveamask = ones(size(blendedim,1),size(blendedim,2));
 
 foveamask(bounding_box(2):bounding_box(2)+bounding_box(4), bounding_box(1):bounding_box(1)+bounding_box(3)) = smfoveamask;
 
-% foveamask = ~poly2mask(foveapts(:,1)+bounding_box(1),foveapts(:,2)+bounding_box(2),size(blendedim,1),size(blendedim,2));
-% figure;  imagesc(foveamask)
-
-
 
 if nargout == 0
     %% Display and output
@@ -464,26 +410,3 @@ if nargout == 0
     imwrite( uint8(scaled_density.*imclose(threshold_mask,ones(11)).*foveamask),parula(256),fullfile(result_path, [prefix 'thresh_montage_density_' num2str(scaling,'%5.2f') '.tif']))
     clear scaled_density;
 end
-
-%% Temp horizontal plot
-% band_radius = 256;
-% cmap = parula(256);
-% 
-% eccent_values = 1:length(band_avg_values);
-% eccent_values = scaling*(eccent_values-fovea_coords(1));
-% 
-% band_avg_values = mean(density_map(fovea_coords(2)-band_radius:fovea_coords(2)+bandradius,:),'omitnan');
-% 
-% scaled_band_values = band_avg_values-lower01;
-% scaled_band_values = 255.*(scaled_band_values./upper99);
-% 
-% 
-% for l=1:length(band_avg_values)-1
-%    
-%     plot(
-%     
-% end
-
-
-
-

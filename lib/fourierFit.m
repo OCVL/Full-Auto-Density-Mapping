@@ -1,6 +1,20 @@
 function [spacing_ind, predictions, err, fitParams] = fourierFit(fourierProfile, prior, doplots)
-
-if ~exist('doplots')
+%
+% Copyright (C) 2024 Robert F Cooper
+% 
+% 
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+% 
+%     http://www.apache.org/licenses/LICENSE-2.0
+% 
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+if ~exist('doplots', 'var')
     doplots = false;
 end
 
@@ -28,10 +42,8 @@ if doplots
 end
 
 if isempty(prior)
-    
+     
     [initshift, firsterr, initshiftind] = fourierFit_rough(fourierProfile, doplots);
-    
-    
     
     fitParams.shift = initshift;
     % Make initial guesses
@@ -74,6 +86,7 @@ vlb = [0.5 0.001 0.01 1 0.001  0.001 1  initshift-0.1];
 vub = [5 25   15   10 15     25       10  initshift+0.1];
 
 x = fmincon(@(x)FitModelErrorFunction(x,fourierSampling,fourierProfile,fitParams),x1,[],[],[],[],vlb,vub,[],options);
+
 % [warnmsg, msgid] = lastwarn;
 % if ~isempty(warnmsg) 
 %    disp('Wut'); 
@@ -92,7 +105,7 @@ end
 
 residuals = fourierProfile-predictions;
 spacing_val = fitParams.shift;
-spacing_ind = max(find(fourierSampling<=spacing_val));
+spacing_ind = find(fourierSampling<=spacing_val,1,'last');
 
 fitops = fitoptions('Method','SmoothingSpline','SmoothingParam',0.99995,'Normalize','on');
 % residuals = medfilt1(residuals,7);
@@ -131,7 +144,6 @@ end
 maxbound = length(fourierProfile)-2;
 
 
-
 platstart=NaN;
 for i=spacing_ind-1:-1:minbound
    
@@ -145,7 +157,7 @@ for i=spacing_ind-1:-1:minbound
     if preval>=0 && thisval>=0 % It should only be increasing or flat- if it isn't anymore and heads down, kick out.
         spacing_ind=i; 
 
-    elseif thisval<0 %&& ((residuals(i-1)>0) || (residuals(i)>0))
+    elseif thisval<0 
         if isnan(platstart)
             spacing_ind=i;
         else
@@ -305,7 +317,7 @@ fullExp = params.offset1 + params.scale1*params.exp1.^( -params.decay1 * freqBas
 
 bottomExpLoc = find(freqBase>params.shift);
 if isempty(bottomExpLoc)
-    bottomExpLoc = 1
+    bottomExpLoc = 1;
 end
 bottomExpTime = freqBase(bottomExpLoc);
 
