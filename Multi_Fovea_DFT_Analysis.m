@@ -5,11 +5,24 @@
 % instead of operating on individual files though, it operates on a series
 % of folders.
 
+clear;
+close all;
 
 % Add our support libraries to the path.
 basePath = which('Multi_Fovea_DFT_Analysis.m');
 [basePath ] = fileparts(basePath);
 path(path, fullfile(basePath,'lib')); 
+
+
+liststr = {'microns (mm density)','degrees'};
+[selectedunit, oked] = listdlg('PromptString','Select output units:',...
+                                      'SelectionMode','single',...
+                                      'ListString',liststr);
+if oked == 0
+    error('Cancelled by user.');
+end
+
+unit = liststr{selectedunit};
 
 thisfolder = pwd;
 
@@ -19,7 +32,6 @@ thisfolder = pwd;
 
 [lutfname, lutfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
 
-unit='microns (mm density)';
 
 %%
 restartf=1;

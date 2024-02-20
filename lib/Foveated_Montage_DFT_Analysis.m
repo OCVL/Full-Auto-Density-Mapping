@@ -177,45 +177,26 @@ if ~exist('mask','var')
     mask=[];
 end
 
-if strcmp(method, 'median')
-    parfor i=1:length(fNames)
-        fNames{i}
-        im = imread( fullfile(thispath, fNames{i}) );
 
-        if size(im,3) >1
-            im = im(:,:,1);
-        end
+parfor i=1:length(fNames)
+    fNames{i}
+    im = imread( fullfile(thispath, fNames{i}) );
 
-        im = double(imresize(im, imsize));
-        if ~isempty(mask)
-            im = im.*double(mask);
-        end
-
-        if ~all(im(:) == 0)
-            [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing_median(im, roi_size_fcn, corase_fov_coords);    
-        end
-
+    if size(im,3) >1
+        im = im(:,:,1);
     end
-else
-    parfor i=1:length(fNames)
-        fNames{i}
-        im = imread( fullfile(thispath, fNames{i}) );
 
-        if size(im,3) >1
-            im = im(:,:,1);
-        end
-
-        im = double(imresize(im, imsize));
-        if ~isempty(mask)
-            im = im.*double(mask);
-        end
-
-        if ~all(im(:) == 0)
-            [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing(im, roi_size_fcn, corase_fov_coords);    
-        end
-
+    im = double(imresize(im, imsize));
+    if ~isempty(mask)
+        im = im.*double(mask);
     end
+
+    if ~all(im(:) == 0)
+        [~, im_spac_map{i}, im_err_map{i}, im_sum_map{i}, imbox{i}] = fit_fourier_spacing(im, roi_size_fcn, corase_fov_coords);    
+    end
+
 end
+
 
 delete(myPool)
 

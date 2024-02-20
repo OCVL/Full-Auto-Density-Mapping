@@ -12,16 +12,8 @@ basePath = which('Multi_Montage_DFT_Analysis.m');
 [basePath ] = fileparts(basePath);
 path(path, fullfile(basePath,'lib')); 
 
-thisfolder = pwd;
 
-thisfolder = uigetdir(thisfolder, 'Select the folders containing the montages you wish to assess.');
-    
-[folderList, isdir]=read_folder_contents(thisfolder);
-
-[lutfname, lutfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
-
-unit='microns (mm density)';
-liststr = {'microns (mm density)','degrees','arcmin'};
+liststr = {'microns (mm density)','degrees'};
 [selectedunit, oked] = listdlg('PromptString','Select output units:',...
                                       'SelectionMode','single',...
                                       'ListString',liststr);
@@ -31,15 +23,25 @@ end
 
 unit = liststr{selectedunit};
 
+thisfolder = pwd;
+
+thisfolder = uigetdir(thisfolder, 'Select the folder containing the montage folders you wish to assess.');
+    
+[folderList, isdir]=read_folder_contents(thisfolder);
+
+[lutfname, lutfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
+
+
+
 %%
 restartf = 1;
-endf = length(folderList);
+endf = 1; %length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
     confocal_coords=[];
     something=false;
-    if isdir(f)
+    if isdir{f}
         confocaldir=fullfile(thisfolder, folderList{f},'confocal');
         splitdir=fullfile(thisfolder, folderList{f},'split detection');
         
@@ -117,7 +119,7 @@ for f=restartf:endf
                 blendederrim_split = blendederrim.*confocalmask;
                 density_map_split = density_map.*confocalmask;
                 
-                disp(['Data loaded, merging...']);
+                disp('Data loaded, merging...');
                 clear density_map blendederrim
             
                 errfovpolar = imcart2pseudopolar(blendederrim_fov, 1, .5, fovea_coords,'makima' , 0);
@@ -141,7 +143,6 @@ for f=restartf:endf
                 % saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_polarerror.png') );
                 % 
                 
-
                 offset = find((avgdifferr>=0) == 1, 1, 'first');    
                 
                 MAXOFFSET = 2000;
@@ -277,11 +278,11 @@ for f=restartf:endf
                 density_map_split = splitannuli.*density_map_split;
 
                 
-                figure(2); subplot(1,2,1); imagesc(density_map_split); axis image;
-                subplot(1,2,2); imagesc(density_map_conf);axis image;
-                drawnow;
-                saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_density_areas.png') );
-                close;
+                % figure(2); subplot(1,2,1); imagesc(density_map_split); axis image;
+                % subplot(1,2,2); imagesc(density_map_conf);axis image;
+                % drawnow;
+                % saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_density_areas.png') );
+                % close;
                 
                 density_map_comb = (density_map_conf+density_map_split)./(confannuli+splitannuli);
                 
@@ -296,13 +297,13 @@ for f=restartf:endf
                 clear blendederrim_split blendederrim_conf 
                 
                 
-                figure(3); imagesc(density_map_comb); axis image;
-                drawnow;
-                saveas(gcf, fullfile(thisfolder, folderList{f},'merged_density.png') );
-                figure(4);
-                imagesc(blendederr_comb); axis image;
-                drawnow;
-                saveas(gcf, fullfile(thisfolder, folderList{f},'merged_error.png') );
+                % figure(3); imagesc(density_map_comb); axis image;
+                % drawnow;
+                % saveas(gcf, fullfile(thisfolder, folderList{f},'merged_density.png') );
+                % figure(4);
+                % imagesc(blendederr_comb); axis image;
+                % drawnow;
+                % saveas(gcf, fullfile(thisfolder, folderList{f},'merged_error.png') );
                 
                 
                 safesave_sm(fullfile(confocaldir, fNameC{1}), fullfile(thisfolder, 'Aggregation_Analysis', strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb);
