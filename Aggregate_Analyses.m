@@ -9,7 +9,7 @@ path(path, fullfile(basePath,'lib'));
 % Find the global dataset.
 [agg_fName, globalpath ]=uigetfile(fullfile(pwd,'*.mat'),'Select the aggregate file.');
 
-% Individuals will be above this.
+% Individuals should be above this.
 individual_path = getparent(globalpath,2,'full');
 [fNames] = read_folder_contents(individual_path, 'mat');
 
@@ -57,30 +57,37 @@ maxstriplen = min([downsampled_size-global_fovea_coords global_fovea_coords]); %
 
 %% Obtain global strip averages of density.
 
-deg_position = (0:maxstriplen)*downsamp_scaling;
-strip_radius = round(1/(2*downsamp_scaling)); % Corresponds to 1 degree.
-strip_length = length(deg_position)-1;
+position = (0:maxstriplen)*downsamp_scaling;
+strip_radius = round(1/(2*downsamp_scaling)); 
+strip_length = length(position)-1;
 
 figure(10); clf; 
 % Superior
 sup_strip = flipud(maskeddensity(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius));
 avg_sup_strip = mean(sup_strip,2, 'omitnan');
-plot(deg_position,avg_sup_strip); hold on;
+plot(position,avg_sup_strip); hold on;
 % Inferior
 inf_strip = maskeddensity(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius);
 avg_inf_strip = mean(inf_strip,2, 'omitnan');
-plot(deg_position,avg_inf_strip);
+plot(position,avg_inf_strip);
 % Nasal
 nasal_strip = maskeddensity(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,global_fovea_coords(1):global_fovea_coords(1)+strip_length);
 avg_nasal_strip = mean(nasal_strip, 1, 'omitnan');
-plot(deg_position, avg_nasal_strip);
+plot(position, avg_nasal_strip);
 % Temporal
 temporal_strip = fliplr(maskeddensity(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius, global_fovea_coords(1)-strip_length:global_fovea_coords(1)));
 avg_temp_strip = mean(temporal_strip, 1, 'omitnan');
-plot(deg_position,avg_temp_strip);
+plot(position,avg_temp_strip);
 legend('Superior','Inferior','Nasal','Temporal')
-xlabel('Radial distance (degrees)')
-ylabel('Density (cells/degrees^2)')
+
+
+if strcmp(unit, 'microns (mm density)')    
+    xlabel('Radial distance (microns)')
+    ylabel('Density (cells/mm^2)')
+elseif strcmp(unit, 'degrees')
+    xlabel('Radial distance (degrees)')
+    ylabel('Density (cells/degrees^2)')
+end
 hold off;
 
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgdens.svg']) );
@@ -111,7 +118,7 @@ r=1;
 radii = 0:radius:maxdist;
 
 micrad = nan(size(radii));
-degrad = nan(size(radii));
+rad = nan(size(radii));
 num_cia = nan(size(radii));
 num_cia_horz = nan(size(radii));
 num_cia_vert = nan(size(radii));
@@ -137,8 +144,7 @@ parfor r=1:length(radii)-1
     horz_aoi_density = maskeddensity.*horzaoi;
     vert_aoi_density = maskeddensity.*vertaoi;    
     
-    degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
-%     micrad(r) = persub_micronsperdegree*degrad(r);
+    rad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
     num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
 
     num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
@@ -149,8 +155,6 @@ parfor r=1:length(radii)-1
 %         inner_rad = inner_rad + radius;
 end
 
-numcones_degrad = degrad;
-% numcones_micrad = micrad;
 
 tot_cones = cumsum(num_cia,'omitnan');
 tot_cones(isnan(num_cia)) = NaN;
@@ -166,9 +170,9 @@ tot_cones_sep(isnan(num_cia_sep)) = NaN;
 
 figure(12); 
 subplot(2,1,1);hold on;
-plot(numcones_degrad, tot_cones);
+plot(rad, tot_cones);
 subplot(2,1,2);hold on;
-plot(numcones_degrad, tot_cones_sep,numcones_degrad,tot_cones_horz, numcones_degrad, tot_cones_vert);
+plot(rad, tot_cones_sep,rad,tot_cones_horz, rad, tot_cones_vert);
 drawnow; hold off;
 
 
@@ -176,22 +180,23 @@ drawnow; hold off;
 figure(100); clf; hold on;
 
 sup_stddev = mean(flipud(value_map_stddev(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius)), 2, 'omitnan');
-plot(deg_position, sup_stddev);
+plot(position, sup_stddev);
 inf_stddev = mean(value_map_stddev(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius), 2, 'omitnan');
-plot(deg_position, inf_stddev); 
+plot(position, inf_stddev); 
 nasal_stddev = mean(value_map_stddev(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,global_fovea_coords(1):global_fovea_coords(1)+strip_length), 1, 'omitnan');
-plot(deg_position,nasal_stddev); 
+plot(position,nasal_stddev); 
 temp_stddev = mean(fliplr(value_map_stddev(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius, global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
-plot(deg_position,temp_stddev); 
+plot(position,temp_stddev); 
 
 legend('Superior','Inferior','Nasal','Temporal')
-xlabel('Radial distance (degrees)')
-ylabel('Density (cells/degrees^2)')
+if strcmp(unit, 'microns (mm density)')    
+    xlabel('Radial distance (microns)')
+    ylabel('Density (cells/mm^2)')
+elseif strcmp(unit, 'degrees')
+    xlabel('Radial distance (degrees)')
+    ylabel('Density (cells/degrees^2)')
+end
 
-% upperstd_temp_strip = avg_temp_strip+temp_nasal_stddev;
-% plot(deg_position,upperstd_temp_strip);
-% lowerstd_temp_strip = avg_temp_strip-temp_nasal_stddev;
-% plot(deg_position,lowerstd_temp_strip);
 hold off;
 
 
@@ -200,40 +205,44 @@ hold off;
 figure(11); clf; 
 % Superior
 avg_sup_strip_conf = mean(flipud(maskedconf(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius)),2, 'omitnan');
-plot(deg_position,avg_sup_strip_conf); hold on;
+plot(position,avg_sup_strip_conf); hold on;
 % Inferior
 avg_inf_strip_conf = mean(maskedconf(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius),2, 'omitnan');
-plot(deg_position,avg_inf_strip_conf);
+plot(position,avg_inf_strip_conf);
 % Nasal
 avg_nasal_strip_conf = mean(maskedconf(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,global_fovea_coords(1):global_fovea_coords(1)+strip_length), 1, 'omitnan');
-plot(deg_position, avg_nasal_strip_conf);
+plot(position, avg_nasal_strip_conf);
 % Temporal
 avg_temp_strip_conf = mean(fliplr(maskedconf(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius, global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
-plot(deg_position,avg_temp_strip_conf);
+plot(position,avg_temp_strip_conf);
 legend('Superior','Inferior','Nasal','Temporal')
-xlabel('Radial distance (degrees)')
+
+if strcmp(unit, 'microns (mm density)')    
+    xlabel('Radial distance (microns)')
+elseif strcmp(unit, 'degrees')
+    xlabel('Radial distance (degrees)')
+end
 ylabel('Average confidence (AU)')
-axis([0 10 0 1])
+
 hold off;
 
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.png']) );
 
-numcones_micrad = cell(size(fList));
-numcones_degrad = cell(size(fList));
-num_cones_in_annulus = cell(size(fList));
-num_cones_in_annulus_sep = cell(size(fList));
+numcones_micrad = cell(size(fNames));
+numcones_degrad = cell(size(fNames));
+num_cones_in_annulus = cell(size(fNames));
+num_cones_in_annulus_sep = cell(size(fNames));
 
 %% Perform a pairwise analysis of the difference of each person from the average strips
 figure(12); clf; hold on;
-xlabel('Radial distance (degrees)')
-ylabel('Density (cells/degrees^2)')
-% figure(13); clf; hold on;
-% xlabel('Radial distance (degrees)')
-% ylabel('Confidence (AU)')
-
-fList = 1:length(fNames);
-% fList = [36,40,45,49];
+if strcmp(unit, 'microns (mm density)')    
+    xlabel('Radial distance (mm)')
+    ylabel('Density (cells/mm^2)')
+elseif strcmp(unit, 'degrees')
+    xlabel('Radial distance (degrees)')
+    ylabel('Density (cells/degrees^2)')
+end
 
 
 for f=1:length(fNames)
@@ -243,9 +252,8 @@ for f=1:length(fNames)
     indiv_size = [montage_rect{f}(3,2)-montage_rect{f}(1,2)+1 montage_rect{f}(3,1)-montage_rect{f}(1,1)+1];
     indiv_shifted_density = nan(downsampled_size);
     indiv_shifted_confidence = nan(downsampled_size);
+   
 
-    mm_position = (0:maxstriplen)*(downsamp_scaling*persub_micronsperdegree(f))/1000;
-    
     rowrange = ceil((montage_rect{f}(1,2):montage_rect{f}(3,2))+global_fovea_coords(2));
     colrange = ceil((montage_rect{f}(1,1):montage_rect{f}(3,1))+global_fovea_coords(1));
 
@@ -259,7 +267,11 @@ for f=1:length(fNames)
     % density.
     [X, Y] = meshgrid(1:size(density_map_comb,2), 1:size(density_map_comb,1));
 
-    farrangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2.5/scaling;   
+    if strcmp(unit, 'microns (mm density)')
+        farrangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 800/scaling; 
+    elseif strcmp(unit, 'degrees')
+        farrangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2.5/scaling;
+    end
     
     confcombfar = blendederr_comb.*~farrangemask;
     confcombfar(confcombfar==0)=NaN;
@@ -269,7 +281,11 @@ for f=1:length(fNames)
     confcombclose(confcombclose==0)=NaN;
     lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01]);
 
-    closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 1.25/scaling;
+    if strcmp(unit, 'microns (mm density)')
+        closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 400/scaling;
+    elseif strcmp(unit, 'degrees')
+        closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 1.25/scaling;
+    end
     denscombclose = density_map_comb.*closerangemask;
     denscombclose(denscombclose==0)=NaN;
     densclose = quantile(denscombclose(~isnan(denscombclose)), [0.5]);
@@ -277,7 +293,12 @@ for f=1:length(fNames)
     % If we're looking at data with these filenames, drop their long
     % distance data as its quality is questionable.
     if contains(fNames{f},'11101') || contains(fNames{f},'11092')
-        good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2)  <= 8/scaling;
+        if strcmp(unit, 'microns (mm density)')
+            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2400/scaling; 
+        elseif strcmp(unit, 'degrees')
+            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 8/scaling;
+        end
+
         density_map_comb = density_map_comb .*good_data_mask;
         blendederr_comb = blendederr_comb .*good_data_mask;
     end
@@ -315,12 +336,8 @@ for f=1:length(fNames)
     indiv_shifted_density( rowrange, colrange) =  density_map_comb;
     indiv_shifted_confidence( rowrange, colrange) = blendederr_comb;
 
-%     indiv_shifted_density = indiv_shifted_density.*threshold_mask;
-%     indiv_shifted_confidence = indiv_shifted_confidence.*threshold_mask;
-    
     indiv_shifted_density(indiv_shifted_density==0) = NaN;
     indiv_shifted_confidence(indiv_shifted_confidence==0) = NaN;
-
 
     [colmesh, rowmesh] = meshgrid(1:size(indiv_shifted_density,2), 1:size(indiv_shifted_density,1));
     colmesh = colmesh-global_fovea_coords(1);
@@ -331,10 +348,13 @@ for f=1:length(fNames)
     distmesh = sqrt(colmesh.^2 + rowmesh.^2);
     maxdist = max(distmesh(:));
 
-    colmesh_mm = colmesh.*(downsamp_scaling*persub_micronsperdegree(f))/1000;
-    rowmesh_mm = rowmesh.*(downsamp_scaling*persub_micronsperdegree(f))/1000;
-
-    clear rowmesh colmesh
+    if strcmp(unit, 'microns (mm density)')
+        colmesh = (colmesh.*downsamp_scaling)/1000;
+        rowmesh = (rowmesh.*downsamp_scaling)/1000;
+    elseif strcmp(unit, 'degrees')
+        colmesh = colmesh.*downsamp_scaling;
+        rowmesh = rowmesh.*downsamp_scaling;
+    end
 
     radius = 5; %In pixels
 
@@ -347,42 +367,65 @@ for f=1:length(fNames)
     vertpolar(vertpolar==0) = NaN;
     vertpolar = movmean(mean(vertpolar,'omitnan'), radius);
     
-    plot(mm_position,horzpolar,mm_position,vertpolar)
-    hold on;
+    if strcmp(unit, 'microns (mm density)')
+        position = ((0:maxstriplen)*(downsamp_scaling))/1000;
+    
+        plot(position,horzpolar,position,vertpolar)
+        hold on;
+    
+        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
+        locs = locs(pks>40000);
+        pks = pks(pks>40000);
+        horzcutoff = locs(end);
+        plot(position(horzcutoff),pks(end),'b*')
+    
+        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
+        locs = locs(pks>40000);
+        pks = pks(pks>40000);
+        vertcutoff = locs(end);
+        plot(position(vertcutoff),pks(end),'r*')
+        hold off;
+        drawnow;
+    elseif strcmp(unit, 'degrees')
+        position = (0:maxstriplen)*(downsamp_scaling);
 
-    [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',10);
-    locs = locs(pks>4000);
-    pks = pks(pks>4000);
-    horzcutoff = locs(end);
-    plot(mm_position(horzcutoff),pks(end),'b*')
-
-    [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',10);
-    locs = locs(pks>4000);
-    pks = pks(pks>4000);
-    vertcutoff = locs(end);
-    plot(mm_position(vertcutoff),pks(end),'r*')
-    hold off;
-    drawnow;
+        plot(position,horzpolar,position,vertpolar)
+        hold on;
+    
+        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
+        locs = locs(pks>4000);
+        pks = pks(pks>4000);
+        horzcutoff = locs(end);
+        plot(position(horzcutoff),pks(end),'b*')
+    
+        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
+        locs = locs(pks>4000);
+        pks = pks(pks>4000);
+        vertcutoff = locs(end);
+        plot(position(vertcutoff),pks(end),'r*')
+        hold off;
+        drawnow;
+    end
     
     horzpolar(1:horzcutoff) = NaN;
     vertpolar(1:vertcutoff) = NaN;
-    all_mm = [fliplr(-mm_position) mm_position];
+    all_mm = [fliplr(-position) position];
     allpolar = [fliplr(vertpolar) horzpolar]/max([fliplr(vertpolar) horzpolar]);
 
-    horz_mm_position = mm_position(horzcutoff:end);
-    horzpolar = horzpolar(horzcutoff:end);
-    vert_mm_position = mm_position(vertcutoff:end);
-    vertpolar = vertpolar(vertcutoff:end);
+    horz_position = position(horzcutoff+1:end);
+    horzpolar = horzpolar(horzcutoff+1:end);
+    vert_position = position(vertcutoff+1:end);
+    vertpolar = vertpolar(vertcutoff+1:end);
 
     allmax = max(max(horzpolar), max(vertpolar));
     horzpolar=horzpolar/allmax;
     vertpolar=vertpolar/allmax;
 
 
-    ceoffs = fitLinkedCauchy(horz_mm_position, horzpolar,vert_mm_position,vertpolar);
+    ceoffs = fitLinkedCauchy(horz_position, horzpolar,vert_position,vertpolar);
     
-    fitted_density = ceoffs(1)./((1+(colmesh_mm./ceoffs(3)).^2+(rowmesh_mm./ceoffs(7)).^2)) + ...
-                    ceoffs(2)./((1+(colmesh_mm./ceoffs(4)).^2+(rowmesh_mm./ceoffs(8)).^2));
+    fitted_density = ceoffs(1)./((1+(colmesh./ceoffs(3)).^2+(rowmesh./ceoffs(7)).^2)) + ...
+                    ceoffs(2)./((1+(colmesh./ceoffs(4)).^2+(rowmesh./ceoffs(8)).^2));
 
     fitted_density  = allmax.*fitted_density ; % 'Un-normalize' the values
 
@@ -392,7 +435,7 @@ for f=1:length(fNames)
     radii = 0:r:maxstriplen;
     
     micrad = nan(size(radii));
-    degrad = nan(size(radii));
+    rad = nan(size(radii));
     num_cia = nan(size(radii));
     num_cia_horz = nan(size(radii));
     num_cia_vert = nan(size(radii));
@@ -422,8 +465,7 @@ for f=1:length(fNames)
 %         mean(aoi_density(:), 'omitnan').*annular_area
 %         sum(aoi_density(:).*(downsamp_scaling*downsamp_scaling), 'omitnan')
         
-        degrad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
-        micrad(r) = persub_micronsperdegree(f)*degrad(r);
+        rad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
         num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
         num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
         num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*vert_annular_area;
@@ -433,8 +475,7 @@ for f=1:length(fNames)
 %         inner_rad = inner_rad + radius;
     end
     
-    numcones_degrad{f} = degrad;
-    numcones_micrad{f} = micrad;
+    numcones_rad{f} = rad;
     num_cones_in_annulus{f} = num_cia;
     num_cones_in_annulus_sep{f} = num_cia_sep;
     
@@ -448,11 +489,8 @@ for f=1:length(fNames)
 
     num_cones_in_annulus_sep{f} = tot_cones;
     
-    figure(12); 
-    subplot(2,1,1);hold on;
-    plot(numcones_degrad{f}, num_cones_in_annulus{f});
-    subplot(2,1,2);hold on;
-    plot(numcones_micrad{f}, num_cones_in_annulus{f});
+    figure(12); hold on;
+    plot(numcones_rad{f}, num_cones_in_annulus{f});
     drawnow;
 
     
@@ -461,14 +499,12 @@ end
 figure(12); hold off;
 
 
-totcones = cell2mat(num_cones_in_annulus')';
-degsubs = cell2mat(numcones_degrad')';
-mmsubs = cell2mat(numcones_micrad')';
+totcones = cell2mat(num_cones_in_annulus)';
+subs = cell2mat(numcones_rad')';
 
-combined = nan(size(totcones,1), size(totcones,2)*3);
-combined(:,1:3:end) = degsubs;
-combined(:,2:3:end) = mmsubs;
-combined(:,3:3:end) = totcones;
+combined = nan(size(totcones,1), size(totcones,2)*2);
+combined(:,1:2:end) = subs;
+combined(:,2:2:end) = totcones;
 
 dattable = table();
 indarr = 1:3:size(combined,2)+1;
@@ -478,5 +514,5 @@ for j=1:length(indarr)-1
     dattable.(fNames{j}) = combined(:,beginv:endv);
 
 end
-writetable(dattable, '05232023_totalcones_table.csv');
-% figure(13); hold off;
+
+writetable(dattable, fullfile(globalpath, [char(datetime('today')) '_totalcones_table.csv']));

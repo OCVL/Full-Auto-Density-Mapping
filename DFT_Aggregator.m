@@ -150,8 +150,6 @@ for f=1:length(fNames)
     subplot(1,2,2); imagesc(blendederr_comb); axis image; 
     title( strrep(fNames{f},'_','\_') ); drawnow; hold off;
 
-    
-
     avg_density( rowrange, colrange) = sum(cat(3, avg_density( rowrange, colrange), density_map_comb),3,'omitnan');
     avg_confidence( rowrange, colrange) = sum(cat(3, avg_confidence( rowrange, colrange), blendederr_comb),3,'omitnan');
     combined_sum_map( rowrange, colrange) = sum(cat(3, combined_sum_map( rowrange, colrange), ~isnan(density_map_comb)),3,'omitnan');
@@ -268,9 +266,8 @@ imwrite(rescaled_sum_map, winter(256), fullfile(result_path,[num2str(length(fNam
 %% Determine average/stddev of all data.
 value_map_variance = nan(global_dimension);
 
-
 % For finding outliers:
-figure(1); clf; hold on;
+% figure(1); clf; hold on;
     
 
 % Find the std deviations of all of the subjects.
@@ -339,7 +336,6 @@ for f=1:length(fNames)
 
     thisdiff = sum( cat(3, density_map_comb, -avg_density( rowrange, colrange)) ,3).^2; % This line is good. Nans need to be carried through.
     
-%     thisdiff =  sum( cat(3, (scaling.*blendedim).*(2/sqrt(3)), -avg_spacing( rowrange, colrange)) ,3).^2;
 
     value_map_variance( rowrange, colrange) = sum( cat(3,value_map_variance( rowrange, colrange), thisdiff), 3,'omitnan'); 
      clear thisdiff;
@@ -350,7 +346,7 @@ end
 save( fullfile(result_path,[num2str(length(fNames)) '_aggregate_data.mat']), ...
                             'avg_density', 'avg_confidence','global_fovea_coords',...
                             'global_eye', 'threshold_mask', 'value_map_variance',...
-                            'scaling', 'montage_rect','combined_sum_map','-v7.3');
+                            'unit', 'scaling', 'montage_rect','combined_sum_map','-v7.3');
 
 return;
 
@@ -391,6 +387,6 @@ clear maskedspac temp_strip nasal_strip
 save( fullfile(result_path,[num2str(length(fNames)) '_aggregate_data.mat']), ...
                             'avg_density', 'avg_confidence','global_fovea_coords',...
                             'global_eye', 'threshold_mask', 'value_std_dev','value_map_variance',...
-                            'scaling', 'montage_rect','combined_sum_map','-v7.3');
+                            'unit', 'scaling', 'montage_rect','combined_sum_map','-v7.3');
 
 return;

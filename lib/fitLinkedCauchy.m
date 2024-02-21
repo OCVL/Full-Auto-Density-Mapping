@@ -3,7 +3,7 @@ function [x] = fitLinkedCauchy(horz_x, horzpolar, vert_x, vertpolar)
 
 
 
-x0 = [1.5 0.4 0.2 0.3  1.5 0.4 0.2 0.3];
+x0 = [2 0.4 0.2 0.3  2 0.4 0.2 0.3];
 vlb = [];
 vub = [];
 options = optimset('fmincon');
