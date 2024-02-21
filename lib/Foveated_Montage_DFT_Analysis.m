@@ -97,7 +97,7 @@ end
 
 if ~isempty(lut) % If we didn't directly input a scale,
     % ask if we want to scale the montage to a common (smallest) scale from given LUT.
-    pressedbutton=[]
+    pressedbutton=[];
     if ~exist('smallestscale','var')
         pressedbutton = questdlg('Scale montage to the common (smallest) scale from the selected LUT?',...
                                  'Scale to common size?', 'No');
@@ -272,7 +272,7 @@ end
     
 
 threshdensitymap=density_map;
-rois =threshdensitymap>quantile(threshdensitymap(threshdensitymap>0),.85);
+rois =threshdensitymap>quantile(threshdensitymap(threshdensitymap>0), 0.85);
 
 % Find our biggest cc- this will likely be the fovea.
 cc = bwconncomp(rois);
@@ -281,10 +281,10 @@ numPixels = cellfun(@numel,cc.PixelIdxList);
 [biggest,idx] = max(numPixels);
 
 if length(numPixels)>=1
-    numPixels = sort(numPixels,'descend')./biggest
+    numPixels = sort(numPixels,'descend')./biggest;
     % If this section is not far and away the biggest region, 
     % request that the user helps you out. Otherwise, use the biggest CC.
-    if any(numPixels(2:end)>0.75)
+    if any(numPixels(2:end)>=0.5)
         % To find foveal center
         fig=figure(10); clf; hold on;
         imagesc(density_map.*threshold_mask); axis image;

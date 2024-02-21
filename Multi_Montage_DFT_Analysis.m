@@ -53,7 +53,7 @@ end
 
 %%
 restartf = 1;
-endf = 1; %length(folderList);
+endf = length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
@@ -116,7 +116,7 @@ end
 
 %% Process each of the above, merging their pieces together
 restartf=1;
-endf=1; %length(folderList);
+endf=length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
