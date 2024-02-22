@@ -199,6 +199,9 @@ end
 
 hold off;
 
+saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
+saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.png']) );
+
 
 %% Obtain global strip averages of confidence.
 
