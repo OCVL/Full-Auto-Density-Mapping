@@ -77,6 +77,19 @@ maxglobalbounds = max(cell2mat(montage_rect));
 global_dimension = fliplr(ceil(maxglobalbounds-global_fovea_coords))+1; % Flipped so height/width (row/col), not width/height (x/y)
 
 global_fovea_coords = round(-global_fovea_coords);
+
+if ~exist('unit','var')
+    liststr = {'microns (mm density)','degrees'};
+    [unitind, oked] = listdlg('PromptString','Select output units:',...
+                                          'SelectionMode','single',...
+                                          'ListString',liststr);
+
+    unit = liststr{unitind};
+    if oked == 0
+        error('Cancelled by user.');
+    end
+end
+
 %% Add all of the dft information to the montage, and combine.
 
 avg_density = zeros(global_dimension);
@@ -169,31 +182,32 @@ polar_foveal_density_map = imcart2pseudopolar(foveal_density_map, 1, 1,[769, 769
 polar_foveal_density_map(polar_foveal_density_map==0) = NaN;
 
 ridgeline = nan(size(polar_foveal_density_map,1), 1);
+ridgeloc = nan(size(polar_foveal_density_map,1), 1);
 
-% figure; imagesc(polar_foveal_density_map); axis image;
-% hold on; 
+figure; imagesc(polar_foveal_density_map); axis image;
+hold on; 
 for p=1:size(polar_foveal_density_map,1)
     if strcmp(unit, 'microns (mm density)')    
-        [ridgeline(p), ridgeloc] = findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',5000,'SortStr', 'descend','NPeaks', 1);
+        [ridgeline(p), ridgeloc(p)] = findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',5000,'SortStr', 'descend','NPeaks', 1);
     elseif strcmp(unit, 'degrees')
-        [ridgeline(p), ridgeloc] = findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',750,'SortStr', 'descend','NPeaks', 1);
+        [ridgeline(p), ridgeloc(p)] = findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',750,'SortStr', 'descend','NPeaks', 1);
     end
     % plot(polar_foveal_density_map(p,:)); hold on;
-    % plot(ridgeloc, p,'r*');
+    plot(ridgeloc(p), p,'r*');
 end
-% hold off;
+hold off;
 min_ridge = round(min(ridgeline));
 
 % Set our tolerance just below our minimum ridge size, vs the foveal min
-centralvals = foveal_density_map(~isnan(foveal_density_map));
-centralvals = min(centralvals);
+centralvals = polar_foveal_density_map(:, floor(min(ridgeloc)/2));
+centralvals = mean(centralvals,'omitnan');
 foveal_density_map(isnan(foveal_density_map)) = 0;
 
 tol = min_ridge-centralvals;
 smfoveamask = ~grayconnected(foveal_density_map, 769, 769, tol);
 
 smfoveamask=imerode(smfoveamask,strel('disk',50));
-% figure; imagesc(smfoveamask)
+figure; imagesc(smfoveamask)
 
 threshold_mask = true(size(avg_density));
 
