@@ -362,45 +362,15 @@ save( fullfile(result_path,[num2str(length(fNames)) '_aggregate_data.mat']), ...
                             'global_eye', 'threshold_mask', 'value_map_variance',...
                             'unit', 'scaling', 'montage_rect','combined_sum_map','-v7.3');
 
-return;
 
-%%
+
+
  value_std_dev = value_map_variance;
  value_std_dev = value_std_dev./(combined_sum_map-1);
  value_std_dev(isinf(value_std_dev)) =0;
  value_std_dev = sqrt(value_std_dev);
- maskedspac = value_std_dev.*threshold_mask;
+ % maskedspac = value_std_dev.*threshold_mask;
 
 figure(3); imagesc(value_std_dev.*threshold_mask); title('Combined Spacing Std dev');
 saveas(gcf,[num2str(length(fNames)) 'subjects_combined_stddev.png']);
 saveas(gcf,[num2str(length(fNames)) 'subjects_combined_stddev.svg']);
-
-% maxstriplen = min([size(-global_fovea_coords global_fovea_coords]); %Find out the largest strip we can make in pixels.
-
-deg_position = (0:maxstriplen)*scaling;
-
-figure(20); clf; hold on;
-% Superior
-plot(deg_position,mean(flipud(maskedspac(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-180:global_fovea_coords(1)+180)),2,  'omitnan')); hold on;
-% Inferior
-plot(deg_position,mean(maskedspac(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-180:global_fovea_coords(1)+180),2, 'omitnan'));
-% Nasal
-nasal_strip = mean(maskedspac(global_fovea_coords(2)-180:global_fovea_coords(2)+180,global_fovea_coords(1):global_fovea_coords(1)+strip_length), 1,  'omitnan');
-plot(deg_position, nasal_strip);
-% Temporal
-temp_strip = mean(fliplr(maskedspac(global_fovea_coords(2)-180:global_fovea_coords(2)+180,global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1,  'omitnan');
-plot(deg_position,temp_strip);
-legend('Superior','Inferior','Nasal','Temporal')
-xlabel('Radial distance (degrees)')
-ylabel('Std Dev of Density (cells/degrees^2)')
-
-saveas(gcf, fullfile(result_path,[num2str(length(fNames)) 'subjects_directionalstddev.png']));
-saveas(gcf, fullfile(result_path,[num2str(length(fNames)) 'subjects_directionalstddev.svg']));
-clear maskedspac temp_strip nasal_strip
-
-save( fullfile(result_path,[num2str(length(fNames)) '_aggregate_data.mat']), ...
-                            'avg_density', 'avg_confidence','global_fovea_coords',...
-                            'global_eye', 'threshold_mask', 'value_std_dev','value_map_variance',...
-                            'unit', 'scaling', 'montage_rect','combined_sum_map','-v7.3');
-
-return;
