@@ -35,7 +35,7 @@ if ~exist('location','var') || isempty(location)
 end
 
 im = double(im);
-im(isnan(im)) = 0;
+
 %%
 [X, Y]= meshgrid( 1:size(im,2), 1:size(im,1) );
 
@@ -52,8 +52,8 @@ Ty = Ty + location(2);
 
 pseudoim = interp2(X,Y,im,Rx,Ty,method);
 
-pseudoim(isnan(pseudoim)) = 0;
 maxrho = max(rho);
+
 % imagesc( pseudoim ); colormap gray; axis image;
 end
 

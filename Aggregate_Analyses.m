@@ -199,8 +199,8 @@ end
 
 hold off;
 
-saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
-saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.png']) );
+saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_stddev.svg']) );
+saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_stddev.png']) );
 
 
 %% Obtain global strip averages of confidence.
@@ -232,13 +232,19 @@ hold off;
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.png']) );
 
+
+
+%% Analyze the total number of cones as a function of eccentricity by fitting our curves
+
+mindensity = nan(size(fNames));
+maxdensity = nan(size(fNames));
 numcones_micrad = cell(size(fNames));
 numcones_degrad = cell(size(fNames));
 num_cones_in_annulus = cell(size(fNames));
 num_cones_in_annulus_sep = cell(size(fNames));
 
-%% Perform a pairwise analysis of the difference of each person from the average strips
 figure(12); clf; hold on;
+figure(9); clf;
 if strcmp(unit, 'microns (mm density)')    
     xlabel('Radial distance (mm)')
     ylabel('Density (cells/mm^2)')
@@ -247,8 +253,8 @@ elseif strcmp(unit, 'degrees')
     ylabel('Density (cells/degrees^2)')
 end
 
-
-for f=1:length(fNames)
+%%
+for f=49:length(fNames)
     disp(['Loading, downsampling and prepping: ' fNames{f}])
     load( fullfile(individual_path, fNames{f}), 'density_map_comb', 'blendederr_comb','fovea_coords', 'imsize');
     
@@ -278,7 +284,7 @@ for f=1:length(fNames)
     
     confcombfar = blendederr_comb.*~farrangemask;
     confcombfar(confcombfar==0)=NaN;
-    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.10]);
+    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.1]);
 
     confcombclose = blendederr_comb.*farrangemask;
     confcombclose(confcombclose==0)=NaN;
@@ -297,9 +303,9 @@ for f=1:length(fNames)
     % distance data as its quality is questionable.
     if contains(fNames{f},'11101') || contains(fNames{f},'11092')
         if strcmp(unit, 'microns (mm density)')
-            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2400/scaling; 
+            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2100/scaling; 
         elseif strcmp(unit, 'degrees')
-            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 8/scaling;
+            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 7/scaling;
         end
 
         density_map_comb = density_map_comb .*good_data_mask;
@@ -363,10 +369,10 @@ for f=1:length(fNames)
 
     % Extract all horizontal-dominant and vertical-dominant data for
     % fitting.
-    horzpolar = imcart2pseudopolar(indiv_shifted_density.*horzmask, 1, 0.5,global_fovea_coords,'makima',0,maxstriplen);
+    horzpolar = imcart2pseudopolar(indiv_shifted_density.*horzmask, 1, 0.5,global_fovea_coords,'cubic',0,maxstriplen);
     horzpolar(horzpolar==0) = NaN;
     horzpolar = movmean(mean(horzpolar,'omitnan'), radius);
-    vertpolar = imcart2pseudopolar(indiv_shifted_density.*vertmask, 1, 0.5,global_fovea_coords,'makima',0,maxstriplen);
+    vertpolar = imcart2pseudopolar(indiv_shifted_density.*vertmask, 1, 0.5,global_fovea_coords,'cubic',0,maxstriplen);
     vertpolar(vertpolar==0) = NaN;
     vertpolar = movmean(mean(vertpolar,'omitnan'), radius);
     
@@ -376,17 +382,31 @@ for f=1:length(fNames)
         plot(position,horzpolar,position,vertpolar)
         hold on;
     
-        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
-        locs = locs(pks>40000);
-        pks = pks(pks>40000);
-        horzcutoff = locs(end);
-        plot(position(horzcutoff),pks(end),'b*')
+        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000);
+        locs = locs(pks>55000);
+        pks = pks(pks>55000);
+
+        if ~isempty(locs)
+            horzcutoff = locs(end);
+            horzpk = pks(end);
+        else
+            [horzpk, horzcutoff]=max(horzpolar);
+        end
+        
     
-        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
-        locs = locs(pks>40000);
-        pks = pks(pks>40000);
-        vertcutoff = locs(end);
-        plot(position(vertcutoff),pks(end),'r*')
+        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000);
+        locs = locs(pks>55000);
+        pks = pks(pks>55000);
+        
+        if ~isempty(locs)
+            vertcutoff = locs(end);
+            vertpk = pks(end);
+        else
+            [vertpk, vertcutoff]=max(horzpolar);
+        end
+
+        plot(position(horzcutoff),horzpk,'b*')
+        plot(position(vertcutoff),vertpk,'r*')
         hold off;
         drawnow;
     elseif strcmp(unit, 'degrees')
@@ -395,17 +415,31 @@ for f=1:length(fNames)
         plot(position,horzpolar,position,vertpolar)
         hold on;
     
-        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
+        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000);
         locs = locs(pks>4000);
         pks = pks(pks>4000);
-        horzcutoff = locs(end);
-        plot(position(horzcutoff),pks(end),'b*')
+
+        if ~isempty(locs)
+            horzcutoff = locs(end);
+            horzpk = pks(end);
+        else
+            [horzpk, horzcutoff]=max(horzpolar);
+        end
+        
     
-        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000, 'SortStr', 'descend','NPeaks', 1);
+        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000);
         locs = locs(pks>4000);
         pks = pks(pks>4000);
-        vertcutoff = locs(end);
-        plot(position(vertcutoff),pks(end),'r*')
+        
+        if ~isempty(locs)
+            vertcutoff = locs(end);
+            vertpk = pks(end);
+        else
+            [vertpk, vertcutoff]=max(horzpolar);
+        end
+
+        plot(position(horzcutoff),horzpk,'b*')
+        plot(position(vertcutoff),vertpk,'r*')
         hold off;
         drawnow;
     end
@@ -444,10 +478,10 @@ for f=1:length(fNames)
     num_cia_vert = nan(size(radii));
     num_cia_sep = nan(size(radii));
     
+% figure(9000); hold on;
+
+
     parfor r=1:length(radii)-1
-    
-%     while inner_rad + radius < maxdist
-    
         aoi = double(distmesh > radii(r) & distmesh <= radii(r+1));
         aoi(aoi == 0) = NaN;
         
@@ -467,17 +501,19 @@ for f=1:length(fNames)
 %         r*downsamp_scaling          
 %         mean(aoi_density(:), 'omitnan').*annular_area
 %         sum(aoi_density(:).*(downsamp_scaling*downsamp_scaling), 'omitnan')
-        
+        % plot(r, mean(aoi_density(:), 'omitnan'),'r*');
+        % plot(r, annular_area,'k.');
         rad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
         num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
         num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
         num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*vert_annular_area;
         num_cia_sep(r) = num_cia_horz(r) + num_cia_vert(r);
         
-%         r=r+1;
-%         inner_rad = inner_rad + radius;
     end
     
+    maxdensity(f) = max(fitted_density(:),[],'omitnan');
+    mindensity(f) = min(fitted_density(:),[],'omitnan');
+
     numcones_rad{f} = rad;
     num_cones_in_annulus{f} = num_cia;
     num_cones_in_annulus_sep{f} = num_cia_sep;
@@ -496,8 +532,15 @@ for f=1:length(fNames)
     plot(numcones_rad{f}, num_cones_in_annulus{f});
     drawnow;
 
-    
-%     pause;
+    figure(9);
+    subplot(1,2,1);  hold on;
+    plot( mindensity(f), max(num_cones_in_annulus{f},[],'omitnan'), 'k*');
+    xlabel('Min Density')
+    subplot(1,2,2); hold on;
+    plot( maxdensity(f), max(num_cones_in_annulus{f},[],'omitnan'), 'k*');
+    xlabel('Max Density')
+    drawnow;
+     pause(1);
 end
 figure(12); hold off;
 

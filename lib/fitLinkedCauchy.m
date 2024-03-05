@@ -1,9 +1,15 @@
 function [x] = fitLinkedCauchy(horz_x, horzpolar, vert_x, vertpolar)
 
+horznan = ~isnan(horzpolar);
+horzpolar = horzpolar(horznan );
+horz_x = horz_x(horznan);
+
+vertnan = ~isnan(vertpolar);
+vertpolar = vertpolar(vertnan );
+vert_x = vert_x(vertnan);
 
 
-
-x0 = [2 0.4 0.2 0.3  2 0.4 0.2 0.3];
+x0 = [1.75 0.4 0.2 0.3  1.75 0.4 0.2 0.3];
 vlb = [];
 vub = [];
 options = optimset('fmincon');
@@ -35,14 +41,14 @@ function f = FitCauchyFunction(x, horz_x, horzpolar, vert_x, vertpolar)
     theDiff2 = sum((horzest-horzpolar).^2, 'omitnan') + sum((vertest-vertpolar).^2, 'omitnan');
     f = sqrt( theDiff2/(length(horzpolar)+length(vertpolar)) );
 
-%     figure(42); 
-%     clf;
-%     plot(horz_x, horzpolar, vert_x, vertpolar);hold on;
-%     plot(0:0.01:horz_x(end), CauchyLike(x(1:4),0:0.01:horz_x(end)), 'r');
-%     plot(0:0.01:vert_x(end), CauchyLike(x(5:8),0:0.01:vert_x(end)), 'b');
-%     hold off;
-%     drawnow;
-%     pause(0.01);
+    % figure(42); 
+    % clf;
+    % plot(horz_x, horzpolar, vert_x, vertpolar);hold on;
+    % plot(0:0.01:horz_x(end), CauchyLike(x(1:4),0:0.01:horz_x(end)), 'r');
+    % plot(0:0.01:vert_x(end), CauchyLike(x(5:8),0:0.01:vert_x(end)), 'b');
+    % hold off;
+    % drawnow;
+    % pause(0.01);
 end
 
 function vals = CauchyLike(x, mm_position)
