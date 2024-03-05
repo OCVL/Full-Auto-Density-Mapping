@@ -368,7 +368,15 @@ save( fullfile(result_path,[num2str(length(fNames)) '_aggregate_data.mat']), ...
  value_std_dev = value_map_variance;
  value_std_dev = value_std_dev./(combined_sum_map-1);
  value_std_dev(isinf(value_std_dev)) =0;
- value_std_dev = sqrt(value_std_dev);
+ value_std_dev = real(sqrt(value_std_dev));
+
+lowdens = quantile(value_std_dev(threshold_mask(:)),0.01);
+rescaled = (value_std_dev.*threshold_mask)-lowdens;
+rescaled(rescaled<0) = 0;
+highdens = quantile(rescaled(rescaled~=0),0.99);
+rescaled = 255*(rescaled./highdens); 
+rescaled(rescaled>255) = 255;
+imwrite(rescaled, parula(256), fullfile(globalpath,[num2str(length(fNames)) '_subjects_combined_stddev.tif']))
  % maskedspac = value_std_dev.*threshold_mask;
 
 figure(3); imagesc(value_std_dev.*threshold_mask); title('Combined Spacing Std dev');

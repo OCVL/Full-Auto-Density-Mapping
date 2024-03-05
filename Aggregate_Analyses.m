@@ -40,15 +40,17 @@ value_map_variance = value_map_variance./(combined_sum_map-1);
 value_map_variance(isinf(value_map_variance)) =0;
 
 value_map_variance(value_map_variance==0)=NaN;
+value_map_variance = imresize((value_map_variance), downsampled_size, 'lanczos3');
 value_map_stddev = imresize(sqrt(value_map_variance), downsampled_size, 'lanczos3');
-clear value_map_variance
 
 combined_sum_map = imresize(combined_sum_map, downsampled_size, 'nearest');
 
+value_map_variance = value_map_variance.*threshold_mask;
 value_map_stddev = value_map_stddev.*threshold_mask;
 maskeddensity = avg_density.*threshold_mask;
 maskedconf = avg_confidence.*threshold_mask;
 
+value_map_variance(value_map_variance==0)= NaN;
 value_map_stddev(value_map_stddev==0) = NaN;
 maskedconf(maskedconf==0) = NaN;
 maskeddensity(maskeddensity==0) = NaN;
@@ -179,13 +181,13 @@ drawnow; hold off;
 %% STDDEV
 figure(100); clf; hold on;
 
-sup_stddev = mean(flipud(value_map_stddev(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius)), 2, 'omitnan');
+sup_stddev = sqrt(mean(flipud(value_map_variance(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius)), 2, 'omitnan'));
 plot(position, sup_stddev);
-inf_stddev = mean(value_map_stddev(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius), 2, 'omitnan');
+inf_stddev = sqrt(mean(value_map_variance(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius), 2, 'omitnan'));
 plot(position, inf_stddev); 
-nasal_stddev = mean(value_map_stddev(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,global_fovea_coords(1):global_fovea_coords(1)+strip_length), 1, 'omitnan');
+nasal_stddev = sqrt(mean(value_map_variance(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,global_fovea_coords(1):global_fovea_coords(1)+strip_length), 1, 'omitnan'));
 plot(position,nasal_stddev); 
-temp_stddev = mean(fliplr(value_map_stddev(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius, global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan');
+temp_stddev = sqrt(mean(fliplr(value_map_variance(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius, global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan'));
 plot(position,temp_stddev); 
 
 legend('Superior','Inferior','Nasal','Temporal')
@@ -254,7 +256,7 @@ elseif strcmp(unit, 'degrees')
 end
 
 %%
-for f=49:length(fNames)
+for f=1:length(fNames)
     disp(['Loading, downsampling and prepping: ' fNames{f}])
     load( fullfile(individual_path, fNames{f}), 'density_map_comb', 'blendederr_comb','fovea_coords', 'imsize');
     
@@ -544,6 +546,17 @@ for f=49:length(fNames)
 end
 figure(12); hold off;
 
+figure(99);
+subplot(1,2,1); 
+plot( mindensity, totcones(end-1,:),'b.');
+xlabel('Min Density')
+subplot(1,2,2);
+plot( maxdensity, totcones(end-1,:), 'r.');
+xlabel('Max Density')
+drawnow;
+
+dlmwrite(fullfile(globalpath, [char(datetime('today')) '_minmax_density_v_tot.csv']), [totcones(end-1,:)' mindensity maxdensity], ',');
+
 
 totcones = cell2mat(num_cones_in_annulus)';
 subs = cell2mat(numcones_rad')';
@@ -553,7 +566,7 @@ combined(:,1:2:end) = subs;
 combined(:,2:2:end) = totcones;
 
 dattable = table();
-indarr = 1:3:size(combined,2)+1;
+indarr = 1:2:size(combined,2)+1;
 for j=1:length(indarr)-1
     beginv = indarr(j);
     endv = indarr(j+1)-1;
