@@ -461,12 +461,15 @@ for f=1:length(fNames)
     vertpolar=vertpolar/allmax;
 
 
-    ceoffs = fitLinkedCauchy(horz_position, horzpolar,vert_position,vertpolar);
+    coeffs = fitLinkedCauchy(horz_position, horzpolar,vert_position,vertpolar);
     
-    fitted_density = ceoffs(1)./((1+(colmesh./ceoffs(3)).^2+(rowmesh./ceoffs(7)).^2)) + ...
-                    ceoffs(2)./((1+(colmesh./ceoffs(4)).^2+(rowmesh./ceoffs(8)).^2));
+    fitted_density = coeffs(1)./((1+(colmesh./coeffs(3)).^2+(rowmesh./coeffs(8)).^2)) + ...
+                    coeffs(2)./((1+(colmesh./coeffs(4)).^2+(rowmesh./coeffs(9)).^2)) + (coeffs(5) + coeffs(10))/2;
 
     fitted_density  = allmax.*fitted_density ; % 'Un-normalize' the values
+
+    % figure(122);
+    % imagesc(fitted_density);
 
 
     % Create and extract total cone annuli.    
@@ -483,7 +486,7 @@ for f=1:length(fNames)
 % figure(9000); hold on;
 
 
-    parfor r=1:length(radii)-1
+    for r=1:length(radii)-1
         aoi = double(distmesh > radii(r) & distmesh <= radii(r+1));
         aoi(aoi == 0) = NaN;
         
@@ -506,11 +509,19 @@ for f=1:length(fNames)
         % plot(r, mean(aoi_density(:), 'omitnan'),'r*');
         % plot(r, annular_area,'k.');
         rad(r) = downsamp_scaling*(radii(r+1)+radii(r))/2;
-        num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
-        num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
-        num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*vert_annular_area;
-        num_cia_sep(r) = num_cia_horz(r) + num_cia_vert(r);
+        if strcmp(unit, 'microns (mm density)')
+            num_cia(r) = mean(aoi_density(:), 'omitnan').*(annular_area/1000^2);
+            num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*(horz_annular_area/1000^2);
+            num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*(vert_annular_area/1000^2);
+            num_cia_sep(r) = num_cia_horz(r) + num_cia_vert(r);
+    
         
+        elseif strcmp(unit, 'degrees')
+            num_cia(r) = mean(aoi_density(:), 'omitnan').*annular_area;
+            num_cia_horz(r) = mean(horz_aoi_density(:), 'omitnan').*horz_annular_area;
+            num_cia_vert(r) = mean(vert_aoi_density(:), 'omitnan').*vert_annular_area;
+            num_cia_sep(r) = num_cia_horz(r) + num_cia_vert(r);
+        end
     end
     
     maxdensity(f) = max(fitted_density(:),[],'omitnan');
@@ -546,6 +557,13 @@ for f=1:length(fNames)
 end
 figure(12); hold off;
 
+
+%%
+
+
+totcones = cell2mat(num_cones_in_annulus)';
+subs = cell2mat(numcones_rad')';
+
 figure(99);
 subplot(1,2,1); 
 plot( mindensity, totcones(end-1,:),'b.');
@@ -554,19 +572,15 @@ subplot(1,2,2);
 plot( maxdensity, totcones(end-1,:), 'r.');
 xlabel('Max Density')
 drawnow;
-
 dlmwrite(fullfile(globalpath, [char(datetime('today')) '_minmax_density_v_tot.csv']), [totcones(end-1,:)' mindensity maxdensity], ',');
 
 
-totcones = cell2mat(num_cones_in_annulus)';
-subs = cell2mat(numcones_rad')';
-
-combined = nan(size(totcones,1), size(totcones,2)*2);
-combined(:,1:2:end) = subs;
-combined(:,2:2:end) = totcones;
+combined = nan(size(totcones,1), size(totcones,2)*3);
+combined(:,2:3:end) = subs;
+combined(:,3:3:end) = totcones;
 
 dattable = table();
-indarr = 1:2:size(combined,2)+1;
+indarr = 1:3:size(combined,2)+3;
 for j=1:length(indarr)-1
     beginv = indarr(j);
     endv = indarr(j+1)-1;
