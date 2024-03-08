@@ -486,7 +486,7 @@ for f=1:length(fNames)
 % figure(9000); hold on;
 
 
-    for r=1:length(radii)-1
+    parfor r=1:length(radii)-1
         aoi = double(distmesh > radii(r) & distmesh <= radii(r+1));
         aoi(aoi == 0) = NaN;
         

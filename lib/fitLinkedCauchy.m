@@ -9,7 +9,7 @@ vertpolar = vertpolar(vertnan );
 vert_x = vert_x(vertnan);
 
 
-x0 = [1.75 0.4 0.2 0.3 0   1.75 0.4 0.2 0.3 0];
+x0 = [1.25 0.25 0.2 0.3 0   1.25 0.25 0.2 0.3 0];
 vlb = [0 0 0 0 -1  0 0 0 0 -1];
 vub = [3 2 1 1 .3   3 2 1 1 0.3];
 options = optimset('fmincon');
