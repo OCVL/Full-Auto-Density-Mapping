@@ -168,46 +168,149 @@ for f=1:length(fNames)
     density_map_comb(( (density_map_comb > densclose) & ~closerangemask )) = NaN;
     density_map_comb(( (blendederr_comb < lowconffar) & ~farrangemask )) = NaN;
     density_map_comb(( (blendederr_comb < lowconfclose) & farrangemask )) = NaN;
+    clear blendederr_comb;
 
     figure(121); imagesc(density_map_comb); axis image; hold on;
     plot(fovea_coords(1), fovea_coords(2), 'r*')
     hold off;
 
-
-
+    % Make our radial wedges for each direction.
+    [colmesh, rowmesh] = meshgrid(1:size(density_map_comb,2), 1:size(density_map_comb,1));
+    colmesh = colmesh-fovea_coords(1);
+    rowmesh = rowmesh-fovea_coords(2);
     
 
+    infmask = (abs(colmesh)<=abs(rowmesh)) & rowmesh>=0;
+    supmask = (abs(colmesh)<=abs(rowmesh)) & rowmesh<=0;
+    nasalmask = (abs(colmesh)>=abs(rowmesh)) & colmesh>=0;
+    tempmask = (abs(colmesh)>=abs(rowmesh)) & colmesh<=0;
+    clear colmesh rowmesh    
+    
+    % Extract all horizontal-dominant and vertical-dominant data for
+    % fitting.
+    nasalpolar = imcart2pseudopolar(density_map_comb.*nasalmask, 1, 0.5,fovea_coords,'cubic',0);
+    nasalpolar(nasalpolar==0) = NaN;
+    nasalpolar = mean(nasalpolar,'omitnan');
 
+    temppolar = imcart2pseudopolar(density_map_comb.*tempmask, 1, 0.5,fovea_coords,'cubic',0);
+    temppolar(temppolar==0) = NaN;
+    temppolar = mean(temppolar,'omitnan');
 
-    distinf = size(density_map_comb,1)-fovea_coords(2);
-    distsup = size(density_map_comb,1)-distinf;
-    distnasal = size(density_map_comb,2)-fovea_coords(1);
-    disttemp = size(density_map_comb,2)-distnasal;
+    infpolar = imcart2pseudopolar(density_map_comb.*infmask, 1, 0.5,fovea_coords,'cubic',0);
+    infpolar(infpolar==0) = NaN;
+    infpolar = mean(infpolar,'omitnan');
+
+    suppolar = imcart2pseudopolar(density_map_comb.*supmask, 1, 0.5,fovea_coords,'cubic',0);
+    suppolar(suppolar==0) = NaN;
+    suppolar = mean(suppolar,'omitnan');
+    clear infmask supmask nasalmask tempmask
+    
+    if strcmp(unit, 'microns (mm density)')
+    
+        [pks,locs]=findpeaks(nasalpolar,'MinPeakProminence',1000);
+        locs = locs(pks>55000);
+        pks = pks(pks>55000);
+
+        if ~isempty(locs)
+            nasalcutoff = locs(end);
+            nasalpk = pks(end);
+        else
+            [nasalpk, nasalcutoff]=max(nasalpolar);
+        end
+
+        [pks,locs]=findpeaks(temppolar,'MinPeakProminence',1000);
+        locs = locs(pks>55000);
+        pks = pks(pks>55000);
+
+        if ~isempty(locs)
+            tempcutoff = locs(end);
+            temppk = pks(end);
+        else
+            [temppk, tempcutoff]=max(temppolar);
+        end
+            
+        [pks,locs]=findpeaks(infpolar,'MinPeakProminence',1000);
+        locs = locs(pks>55000);
+        pks = pks(pks>55000);
+        
+        if ~isempty(locs)
+            infcutoff = locs(end);
+            infpk = pks(end);
+        else
+            [infpk, infcutoff]=max(infpolar);
+        end
+
+        [pks,locs]=findpeaks(suppolar,'MinPeakProminence',1000);
+        locs = locs(pks>55000);
+        pks = pks(pks>55000);
+        
+        if ~isempty(locs)
+            supcutoff = locs(end);
+            suppk = pks(end);
+        else
+            [suppk, supcutoff]=max(suppolar);
+        end
+
+    elseif strcmp(unit, 'degrees')
+
+        [pks,locs]=findpeaks(horzpolar,'MinPeakProminence',1000);
+        locs = locs(pks>4000);
+        pks = pks(pks>4000);
+
+        if ~isempty(locs)
+            horzcutoff = locs(end);
+            horzpk = pks(end);
+        else
+            [horzpk, horzcutoff]=max(horzpolar);
+        end
+        
+    
+        [pks,locs]=findpeaks(vertpolar,'MinPeakProminence',1000);
+        locs = locs(pks>4000);
+        pks = pks(pks>4000);
+        
+        if ~isempty(locs)
+            vertcutoff = locs(end);
+            vertpk = pks(end);
+        else
+            [vertpk, vertcutoff]=max(horzpolar);
+        end
+
+    end
+
+    distinf = (0:length(infpolar)-1)*scaling;
+    distsup = (0:length(suppolar)-1)*scaling;
+    distnasal = (0:length(nasalpolar)-1)*scaling;
+    disttemp = (0:length(temppolar)-1)*scaling;
+
+    distinf = distinf(infcutoff:end);
+    distsup = distsup(supcutoff:end);
+    distnasal = distnasal(nasalcutoff:end);
+    disttemp = disttemp(tempcutoff:end);
+
+    infpolar = infpolar(infcutoff:end);
+    suppolar = suppolar(supcutoff:end);
+    nasalpolar = nasalpolar(nasalcutoff:end);
+    temppolar = temppolar(tempcutoff:end);
+
+    
 
     figure(10); 
     % Superior
     subplot(2,2,1); hold on;
-    sup_strip = flipud(density_map_comb(1:fovea_coords(2),fovea_coords(1)-strip_radius:fovea_coords(1)+strip_radius));
-    avg_sup_strip = mean(sup_strip,2, 'omitnan');
-    plot( (0:distsup-1)*scaling,avg_sup_strip); 
+    plot( distsup,suppolar); 
     title('Superior')
     % Inferior
     subplot(2,2,2); hold on;
-    inf_strip = density_map_comb(fovea_coords(2):end, fovea_coords(1)-strip_radius:fovea_coords(1)+strip_radius);
-    avg_inf_strip = mean(inf_strip,2, 'omitnan');
-    plot((0:distinf)*scaling,avg_inf_strip);
+    plot(distinf,infpolar);
     title('Inferior')
     % Nasal
     subplot(2,2,3); hold on;
-    nasal_strip = density_map_comb(fovea_coords(2)-strip_radius:fovea_coords(2)+strip_radius,fovea_coords(1):end);
-    avg_nasal_strip = mean(nasal_strip, 1, 'omitnan');
-    plot((0:distnasal)*scaling, avg_nasal_strip);
+    plot(distnasal, nasalpolar);
     title('Nasal')
     % Temporal
     subplot(2,2,4); hold on;
-    temporal_strip = fliplr(density_map_comb(fovea_coords(2)-strip_radius:fovea_coords(2)+strip_radius, 1:fovea_coords(1)));
-    avg_temp_strip = mean(temporal_strip, 1, 'omitnan');
-    plot((0:disttemp-1)*scaling,avg_temp_strip);
+    plot(disttemp,temppolar);
     title('Temporal')
     
     
@@ -219,8 +322,18 @@ for f=1:length(fNames)
         ylabel('Density (cells/degrees^2)')
     end
     hold off;
+    drawnow;
 
 end
+
+subplot(2,2,1); axis([0 3000 0 15e4]);
+subplot(2,2,2); axis([0 3000 0 15e4]);
+subplot(2,2,3); axis([0 3000 0 15e4]);
+subplot(2,2,4); axis([0 3000 0 15e4]);
+h=gcf();
+h.Renderer = 'painters'; % Otherwise it won't save right.
+saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) '_indiv_subjects_directional_avgdens.svg']) );
+saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) '_indiv_subjects_directional_avgdens.png']) );
 
 
 %% Create and extract total cone annuli from average map.   
