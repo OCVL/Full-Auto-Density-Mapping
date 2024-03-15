@@ -57,11 +57,18 @@ maskeddensity(maskeddensity==0) = NaN;
 
 maxstriplen = min([downsampled_size-global_fovea_coords global_fovea_coords]); %Find out the largest strip we can make in pixels.
 
-%% Obtain global strip averages of density.
-
 position = (0:maxstriplen)*downsamp_scaling;
-strip_radius = round(1/(2*downsamp_scaling)); 
+ 
+if strcmp(unit, 'microns (mm density)')    
+    strip_radius = round(291/(2*downsamp_scaling));
+elseif strcmp(unit, 'degrees')
+    strip_radius = round(1/(2*downsamp_scaling));
+end
+
 strip_length = length(position)-1;
+
+%% Obtain global strip averages of density, and individual densities, for each subject.
+
 
 figure(10); clf; 
 % Superior
@@ -95,14 +102,126 @@ hold off;
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgdens.svg']) );
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgdens.png']) );
 
+figure(10); clf; 
 
-% avg_tempnasal_strip = mean([nasal_strip;temporal_strip], 1, 'omitnan');
-% plot(deg_position,avg_tempnasal_strip);
-% avg_supinf_strip = mean([sup_strip inf_strip], 2, 'omitnan');
-% plot(deg_position,avg_supinf_strip);
-% legend('Temporal/Nasal','Superior/Inferior')
-% xlabel('Radial distance (degrees)')
-% ylabel('Density (cells/degrees^2)')
+ % Individual subjects
+for f=1:length(fNames)
+    disp(['Loading and prepping: ' fNames{f}])
+    load( fullfile(individual_path, fNames{f}), 'density_map_comb', 'blendederr_comb','fovea_coords', 'imsize');
+    
+    indiv_size = [montage_rect{f}(3,2)-montage_rect{f}(1,2)+1 montage_rect{f}(3,1)-montage_rect{f}(1,1)+1];
+    indiv_shifted_density = nan(downsampled_size);
+    indiv_shifted_confidence = nan(downsampled_size);
+   
+
+    rowrange = ceil((montage_rect{f}(1,2):montage_rect{f}(3,2))+global_fovea_coords(2));
+    colrange = ceil((montage_rect{f}(1,1):montage_rect{f}(3,1))+global_fovea_coords(1));
+
+    if isempty(strfind(fNames{f}, global_eye)) % If it doesn't match our eye, flip the montage data.
+        density_map_comb = fliplr(density_map_comb);
+        blendederr_comb = fliplr(blendederr_comb);
+        fovea_coords(1) = imsize(2)-fovea_coords(1);
+    end    
+
+    % Lightly filter our data to remove any outliers in confidence or
+    % density.
+    [X, Y] = meshgrid(1:size(density_map_comb,2), 1:size(density_map_comb,1));
+
+    if strcmp(unit, 'microns (mm density)')
+        farrangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 800/scaling; 
+    elseif strcmp(unit, 'degrees')
+        farrangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2.5/scaling;
+    end
+    
+    confcombfar = blendederr_comb.*~farrangemask;
+    confcombfar(confcombfar==0)=NaN;
+    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.1]);
+
+    confcombclose = blendederr_comb.*farrangemask;
+    confcombclose(confcombclose==0)=NaN;
+    lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01]);
+
+    if strcmp(unit, 'microns (mm density)')
+        closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 400/scaling;
+    elseif strcmp(unit, 'degrees')
+        closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 1.25/scaling;
+    end
+    denscombclose = density_map_comb.*closerangemask;
+    denscombclose(denscombclose==0)=NaN;
+    densclose = quantile(denscombclose(~isnan(denscombclose)), [0.5]);
+
+    % If we're looking at data with these filenames, drop their long
+    % distance data as its quality is questionable.
+    if contains(fNames{f},'11101') || contains(fNames{f},'11092')
+        if strcmp(unit, 'microns (mm density)')
+            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 2100/scaling; 
+        elseif strcmp(unit, 'degrees')
+            good_data_mask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 7/scaling;
+        end
+
+        density_map_comb = density_map_comb .*good_data_mask;
+        blendederr_comb = blendederr_comb .*good_data_mask;
+    end
+    clear X Y
+    
+    % Remove the offending values.
+    density_map_comb(( (density_map_comb > densclose) & ~closerangemask )) = NaN;
+    density_map_comb(( (blendederr_comb < lowconffar) & ~farrangemask )) = NaN;
+    density_map_comb(( (blendederr_comb < lowconfclose) & farrangemask )) = NaN;
+
+    figure(121); imagesc(density_map_comb); axis image; hold on;
+    plot(fovea_coords(1), fovea_coords(2), 'r*')
+    hold off;
+
+
+
+    
+
+
+
+    distinf = size(density_map_comb,1)-fovea_coords(2);
+    distsup = size(density_map_comb,1)-distinf;
+    distnasal = size(density_map_comb,2)-fovea_coords(1);
+    disttemp = size(density_map_comb,2)-distnasal;
+
+    figure(10); 
+    % Superior
+    subplot(2,2,1); hold on;
+    sup_strip = flipud(density_map_comb(1:fovea_coords(2),fovea_coords(1)-strip_radius:fovea_coords(1)+strip_radius));
+    avg_sup_strip = mean(sup_strip,2, 'omitnan');
+    plot( (0:distsup-1)*scaling,avg_sup_strip); 
+    title('Superior')
+    % Inferior
+    subplot(2,2,2); hold on;
+    inf_strip = density_map_comb(fovea_coords(2):end, fovea_coords(1)-strip_radius:fovea_coords(1)+strip_radius);
+    avg_inf_strip = mean(inf_strip,2, 'omitnan');
+    plot((0:distinf)*scaling,avg_inf_strip);
+    title('Inferior')
+    % Nasal
+    subplot(2,2,3); hold on;
+    nasal_strip = density_map_comb(fovea_coords(2)-strip_radius:fovea_coords(2)+strip_radius,fovea_coords(1):end);
+    avg_nasal_strip = mean(nasal_strip, 1, 'omitnan');
+    plot((0:distnasal)*scaling, avg_nasal_strip);
+    title('Nasal')
+    % Temporal
+    subplot(2,2,4); hold on;
+    temporal_strip = fliplr(density_map_comb(fovea_coords(2)-strip_radius:fovea_coords(2)+strip_radius, 1:fovea_coords(1)));
+    avg_temp_strip = mean(temporal_strip, 1, 'omitnan');
+    plot((0:disttemp-1)*scaling,avg_temp_strip);
+    title('Temporal')
+    
+    
+    if strcmp(unit, 'microns (mm density)')    
+        xlabel('Radial distance (microns)')
+        ylabel('Density (cells/mm^2)')
+    elseif strcmp(unit, 'degrees')
+        xlabel('Radial distance (degrees)')
+        ylabel('Density (cells/degrees^2)')
+    end
+    hold off;
+
+end
+
 
 %% Create and extract total cone annuli from average map.   
 [colmesh, rowmesh] = meshgrid(1:size(maskeddensity,2), 1:size(maskeddensity,1));
@@ -228,7 +347,7 @@ elseif strcmp(unit, 'degrees')
     xlabel('Radial distance (degrees)')
 end
 ylabel('Average confidence (AU)')
-
+yaxis([0 1]);
 hold off;
 
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
@@ -558,7 +677,7 @@ end
 figure(12); hold off;
 
 
-%%
+
 
 
 totcones = cell2mat(num_cones_in_annulus)';

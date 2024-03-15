@@ -122,11 +122,11 @@ for f=1:length(fNames)
     
     confcombfar = blendederr_comb.*~farrangemask;
     confcombfar(confcombfar==0)=NaN;
-    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.10])
+    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.10]);
 
     confcombclose = blendederr_comb.*farrangemask;
     confcombclose(confcombclose==0)=NaN;
-    lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01])
+    lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01]);
 
     if strcmp(unit, 'microns (mm density)')
         closerangemask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 400/scaling;
@@ -136,7 +136,7 @@ for f=1:length(fNames)
 
     denscombclose = density_map_comb.*closerangemask;
     denscombclose(denscombclose==0)=NaN;
-    densclose = quantile(denscombclose(~isnan(denscombclose)), [0.5])
+    densclose = quantile(denscombclose(~isnan(denscombclose)), [0.5]);
 
     % If we're looking at data with these filenames, drop their long
     % distance data as its quality is questionable.
@@ -162,6 +162,7 @@ for f=1:length(fNames)
     subplot(1,2,1); imagesc(density_map_comb); axis image; 
     subplot(1,2,2); imagesc(blendederr_comb); axis image; 
     title( strrep(fNames{f},'_','\_') ); drawnow; hold off;
+    saveas(gcf, [fNames{f}(1:end-4) '_summary.png']);
 
     avg_density( rowrange, colrange) = sum(cat(3, avg_density( rowrange, colrange), density_map_comb),3,'omitnan');
     avg_confidence( rowrange, colrange) = sum(cat(3, avg_confidence( rowrange, colrange), blendederr_comb),3,'omitnan');

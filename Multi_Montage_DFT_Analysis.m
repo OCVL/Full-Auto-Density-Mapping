@@ -167,9 +167,9 @@ for f=restartf:endf
                 disp('Data loaded, merging...');
                 clear density_map blendederrim
             
-                errfovpolar = imcart2pseudopolar(blendederrim_fov, 1, .5, fovea_coords,'makima' , 0);
-                errconfpolar = imcart2pseudopolar(blendederrim_conf, 1, .5, fovea_coords,'makima' , 0);
-                errsplitpolar = imcart2pseudopolar(blendederrim_split, 1, .5, fovea_coords,'makima' , 0);
+                errfovpolar = imcart2pseudopolar(blendederrim_fov, 1, .5, fovea_coords,'cubic' , 0);
+                errconfpolar = imcart2pseudopolar(blendederrim_conf, 1, .5, fovea_coords,'cubic' , 0);
+                errsplitpolar = imcart2pseudopolar(blendederrim_split, 1, .5, fovea_coords,'cubic' , 0);
                 errfovpolar(errfovpolar<=0) = NaN;
                 errconfpolar(errconfpolar<=0) = NaN;
                 errsplitpolar(errsplitpolar<=0) = NaN;
