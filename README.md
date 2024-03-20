@@ -1,5 +1,5 @@
 # Full-Auto-Density-Mapping
-The reference implementation of the algorithms described in 
+The reference implementation of the algorithms described in:
 
 Cooper, R.F., Kalaparambath, S., Aguirre, G.K., Morgan, J.I.W. "The normative human photoreceptor mosaic: Analysis of a publicly available adaptive optics image repository"
 
@@ -44,4 +44,17 @@ After answering the above prompts, the script will then run, saving the results 
 
 ## Run DFT_Aggregator.m
 
+After Multi_Montage_DFT_Analysis.m completes, the next step is to aggregate (or combine) all montages together. This step is comparably simple.
+
+Running this script will ask you to:
+  1. Select all montage mat files you wish to combine. As these were all automatically placed into the "All Analyses" folder by the prior step, navigate to that folder, and Ctrl (or Command) -click on all montages you wish to aggregate.
+  2. The software will run, and output the aggregated data to a "Results" folder within the All Analyses folder selected.
+
 ## Run Aggregate_Analyses.m
+
+This script produces the analyses used for the figures in the paper (density/confidence/total cone plots). Like the above, this step is comparably simple.
+
+Running this script will ask you to:
+  1. Select the aggregate file. This script assumes that all of the individual files are one folder above where the aggregate is.
+  2. The software will run, and output the analysis figures to the "Results" folder.
+
