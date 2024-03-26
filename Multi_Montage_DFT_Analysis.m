@@ -44,16 +44,16 @@ thisfolder = uigetdir(thisfolder, 'Select the folder containing the montage fold
     
 [folderList, isdir]=read_folder_contents(thisfolder);
 
-[lutfname, lutfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
+[lutfname, lutfolder] = uigetfile(fullfile(thisfolder,'*.csv'),'Select scaling LUT, OR cancel if you want to input the scale directly.');
 
-[fovfname, fovfolder] = uigetfile(fullfile(pwd,'*.csv'),'Select fovea image list, OR cancel if you do not want to analyze foveas separately.');
+[fovfname, fovfolder] = uigetfile(fullfile(thisfolder,'*.csv'),'Select fovea image list, OR cancel if you do not want to analyze foveas separately.');
 if fovfname ~=0    
     fovea_filenames = readcell(fullfile(fovfolder, fovfname), 'Delimiter',',');
 end
 
 %%
 restartf = 1;
-endf = length(folderList);
+endf = 19; %length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
@@ -116,7 +116,7 @@ end
 
 %% Process each of the above, merging their pieces together
 restartf=1;
-endf=length(folderList);
+endf=19; %length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
@@ -325,9 +325,9 @@ for f=restartf:endf
                 density_map_split = splitannuli.*density_map_split;
 
                 
-                % figure(2); subplot(1,2,1); imagesc(density_map_split); axis image;
-                % subplot(1,2,2); imagesc(density_map_conf);axis image;
-                % drawnow;
+                figure(2); subplot(1,2,1); imagesc(density_map_split); axis image;
+                subplot(1,2,2); imagesc(density_map_conf);axis image;
+                drawnow;
                 % saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_density_areas.png') );
                 % close;
                 
@@ -354,7 +354,7 @@ for f=restartf:endf
                 
                 mkdir(fullfile(thisfolder, 'All_Analyses'))
                 safesave_sm(fullfile(confocaldir, fNameC{1}), ...
-                    fullfile(thisfolder, 'All_Analyses', strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb);
+                    fullfile(thisfolder, 'All_Analyses', strrep(fNameC{1}, 'confocal', 'merged')), density_map_comb, blendederr_comb, mergeloc);
                 clear density_map_comb confannuli splitannuli
             end
         end
@@ -366,12 +366,13 @@ for f=restartf:endf
     end
 end
 
-function []= safesave_sm(baseload, newsave, denscomb, errcomb)
+function []= safesave_sm(baseload, newsave, denscomb, errcomb, mergeloc)
     disp(['Using path: ' baseload ' as base for ' newsave]);
     load(baseload);
     density_map_comb = denscomb;
     blendederr_comb = errcomb;
-    save(newsave, 'density_map_comb', 'blendederr_comb', 'fovea_coords', 'imsize', 'unit', 'scaling',  '-v7.3')
+    confsplit_mergeloc = mergeloc;
+    save(newsave, 'density_map_comb', 'blendederr_comb', 'fovea_coords', 'imsize', 'unit', 'scaling', 'confsplit_mergeloc', '-v7.3')
 end
 
 function []= safesave(baseload, newsave, denscomb, errcomb, confannuli, splitannuli)

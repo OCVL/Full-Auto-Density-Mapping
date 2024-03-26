@@ -44,15 +44,15 @@ if size(test_image,3) >1
 end
 im_size = size(test_image);
 
-if ~exist('roi_size','var')
+if ~exist('roi_size','var') || isempty(roi_size)
     roi_size = 128;
 end
 
-if ~exist('ref_loc','var')
+if ~exist('ref_loc','var') || isempty(ref_loc)
     ref_loc = 0;
 end
 
-if ~exist('rdivider','var')
+if ~exist('rdivider','var') || isempty(rdivider)
     rdivider = 8;    
 end
 
@@ -92,6 +92,7 @@ if ~isa(roi_size, 'function_handle') && any( im_size(1:2) <= roi_size)
 else
        
     if ~isa(roi_size, 'function_handle')
+        
         roi_step = floor(roi_size/rdivider);
 
         roi = cell(round((size(test_image)-roi_size)/roi_step));
@@ -104,10 +105,32 @@ else
         for i=imbox(2):roi_step:imbox(2)+imbox(4)-roi_size
             for j=imbox(1):roi_step:imbox(1)+imbox(3)-roi_size
 
-                numzeros = sum(sum(test_image(i:i+roi_size-1, j:j+roi_size-1)<=10));
+                
+                numzeros = sum(sum(test_image(i:i+roi_size-1, j:j+roi_size-1)==0));
 
-                if numzeros < (roi_size*roi_size)*0.05
+                if numzeros < (roi_size*roi_size)*0.01
+
                     roi{round(i/roi_step)+1,round(j/roi_step)+1} = test_image(i:i+roi_size-1, j:j+roi_size-1);
+
+                elseif numzeros < (roi_size*roi_size)*0.05
+                                        
+                    this_roi = test_image(i:i+roi_size-1, j:j+roi_size-1);
+                    the_roi = this_roi;
+                    shrink = 0;
+
+                    while numzeros > (roi_size*roi_size)*0.01 && shrink <= roi_size/4
+                        shrink = shrink+1;
+                        the_roi =this_roi(shrink:end-shrink-1, shrink:end-shrink-1);
+                        
+                        numzeros = sum(sum(the_roi==0));
+                    end
+                    
+                    if shrink < roi_size/4
+                        roi{round(i/roi_step)+1,round(j/roi_step)+1} = the_roi;
+                    else                        
+                        roi{round(i/roi_step)+1,round(j/roi_step)+1} =[];
+                    end
+                    
                 else
                     roi{round(i/roi_step)+1,round(j/roi_step)+1} =[];
                 end
@@ -154,9 +177,31 @@ else
 
                 roi_step = floor(rsize/rdivider);                
 
-                numzeros = sum(sum(test_image(i:(i+rsize-1), j:(j+rsize-1))<=10));
-                if numzeros < (rsize*rsize)*0.05
+                numzeros = sum(sum(test_image(i:(i+rsize-1), j:(j+rsize-1))==0));
+
+                if numzeros < (rsize*rsize)*0.01
+
                     roi{round(i/roi_step)+1,round(j/roi_step)+1} = test_image(i:i+rsize-1, j:j+rsize-1);
+
+                elseif numzeros < (rsize*rsize)*0.05
+                                        
+                    this_roi = test_image(i:i+rsize-1, j:j+rsize-1);
+                    the_roi = this_roi;
+                    shrink = 0;
+
+                    while numzeros > (rsize*rsize)*0.01 && shrink <= rsize/4
+                        shrink = shrink+1;
+                        the_roi =this_roi(shrink:end-shrink-1, shrink:end-shrink-1);
+                        
+                        numzeros = sum(sum(the_roi==0));
+                    end
+                    
+                    if shrink < rsize/4
+                        roi{round(i/roi_step)+1,round(j/roi_step)+1} = the_roi;
+                    else                        
+                        roi{round(i/roi_step)+1,round(j/roi_step)+1} = [];
+                    end
+
                 else
                     roi{round(i/roi_step)+1,round(j/roi_step)+1} =[];
                 end
@@ -177,7 +222,7 @@ par_confidence = nan(size(roi));
 
 
 goodr = find(~cellfun(@isempty,roi))';
-length(goodr)
+
 % If we're not running inside of a pool already, make one to speed this up.
 if ~isempty(getCurrentTask())
     for i=1:length(goodr)
@@ -186,7 +231,7 @@ if ~isempty(getCurrentTask())
     
         power_spect = fftshift(fft2( double(roi{r}) ));
         power_spect = log10(abs(power_spect).^2);
-        rhostart=1; % Exclude the DC term from our radial average
+        rhostart=3; % Exclude the DC term from our radial average
         
     %         figure(100); imagesc(roi{r}); axis image;
     %         power_spect_export = power_spect-min(power_spect(:));
@@ -198,7 +243,7 @@ if ~isempty(getCurrentTask())
         rhosampling = .5;
         thetasampling = 1;
         
-        [polarroi, power_spect_radius] = imcart2pseudopolar(power_spect, rhosampling, thetasampling,[],'makima' , rhostart);
+        [polarroi, power_spect_radius] = imcart2pseudopolar(power_spect, rhosampling, thetasampling,[],'cubic' , rhostart);
         polarroi = circshift(polarroi,-90/thetasampling,1);
         
         %figure(101); imagesc(polarroi); axis image;
@@ -212,7 +257,7 @@ if ~isempty(getCurrentTask())
         
     
         [par_pixel_spac(i), ~, par_confidence(i)] = fourierFit(left_n_right_fourierProfile,[], false);
-        par_pixel_spac(i) = 1/ (par_pixel_spac(i) / ((power_spect_radius*2)/rhosampling));
+        par_pixel_spac(i) = 1/ ((par_pixel_spac(i)+rhostart*2)/ ((power_spect_radius*2)/rhosampling));
         
         
     end
@@ -221,17 +266,17 @@ else
         
         r=goodr(i);
     
-        power_spect = fftshift(fft2( double(roi{r}) ));
+        power_spect = fftshift(fft2( roi{r} ));
         power_spect = log10(abs(power_spect).^2);
-        rhostart=1; % Exclude the DC term from our radial average
+        rhostart=3; % Exclude the DC term from our radial average
         
         rhosampling = .5;
         thetasampling = 1;
         
-        [polarroi, power_spect_radius] = imcart2pseudopolar(power_spect, rhosampling, thetasampling,[],'makima' , rhostart);
+        [polarroi, power_spect_radius] = imcart2pseudopolar(power_spect, rhosampling, thetasampling,[],'cubic' , rhostart);
         polarroi = circshift(polarroi,-90/thetasampling,1);
         
-        %figure(101); imagesc(polarroi); axis image;
+        % figure(101); imagesc(polarroi); axis image;
         
         % This really isn't needed because of Hermitian symmetry...
         %upper_n_lower = [thetasampling:45 136:225 316:360]/thetasampling;
@@ -242,7 +287,7 @@ else
         
     
         [par_pixel_spac(i), ~, par_confidence(i)] = fourierFit(left_n_right_fourierProfile,[], false);
-        par_pixel_spac(i) = 1/ (par_pixel_spac(i) / ((power_spect_radius*2)/rhosampling));
+        par_pixel_spac(i) = 1/ ((par_pixel_spac(i)+rhostart*2) / ((power_spect_radius*2)/rhosampling));
         
         
     end

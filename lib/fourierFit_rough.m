@@ -24,7 +24,7 @@ end
 
 % Make initial guesses    
 fitParams.scale1 = max(fourierProfile)*0.9-min(fourierProfile);
-fitParams.decay1 = 1;
+fitParams.decay1 = (fourierProfile(1)*.36);
 fitParams.offset1 = 0;
 fitParams.exp1 = exp(1);
 fitParams.shift = 0;
