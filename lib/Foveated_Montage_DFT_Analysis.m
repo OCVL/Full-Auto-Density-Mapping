@@ -284,7 +284,7 @@ if length(numPixels)>=1
     numPixels = sort(numPixels,'descend')./biggest;
     % If this section is not far and away the biggest region, 
     % request that the user helps you out. Otherwise, use the biggest CC.
-    if any(numPixels(2:end)>=0.5)
+    if any(numPixels(2:end)>=0.4)
         % To find foveal center
         fig=figure(10); clf; hold on;
         imagesc(density_map.*threshold_mask); axis image;

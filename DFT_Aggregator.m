@@ -121,12 +121,12 @@ for f=1:length(fNames)
     end
     
     confcombfar = blendederr_comb.*~farrangemask;
-    confcombfar(confcombfar==0)=NaN;
-    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.10]);
+    confcombfar(confcombfar==0 | confcombfar>0.9)=NaN;
+    lowconffar = quantile(confcombfar(~isnan(confcombfar) ), [0.1]);
 
     confcombclose = blendederr_comb.*farrangemask;
-    confcombclose(confcombclose==0)=NaN;
-    lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01]);
+    confcombclose(confcombclose==0 | confcombclose>0.9)=NaN;
+    lowconfclose = quantile(confcombclose(~isnan(confcombclose) ), [0.01]);
 
     if strcmp(unit, 'microns (mm density)')
         closerangemask = sqrt((X-foveal_coords(f,1)).^2 + (Y-foveal_coords(f,2)).^2) <= 400/scaling;
@@ -158,15 +158,17 @@ for f=1:length(fNames)
     %Also remove them from our confidence.
     blendederr_comb(isnan(density_map_comb)) = NaN;
 
-    figure(1); clf; hold on;
-    subplot(1,2,1); imagesc(density_map_comb); axis image; 
-    subplot(1,2,2); imagesc(blendederr_comb); axis image; 
-    title( strrep(fNames{f},'_','\_') ); drawnow; hold off;
-    saveas(gcf, [fNames{f}(1:end-4) '_summary.png']);
-
+     
     avg_density( rowrange, colrange) = sum(cat(3, avg_density( rowrange, colrange), density_map_comb),3,'omitnan');
     avg_confidence( rowrange, colrange) = sum(cat(3, avg_confidence( rowrange, colrange), blendederr_comb),3,'omitnan');
     combined_sum_map( rowrange, colrange) = sum(cat(3, combined_sum_map( rowrange, colrange), ~isnan(density_map_comb)),3,'omitnan');
+    
+
+    % figure(2); clf; hold on;
+    % subplot(1,2,1); imagesc(density_map_comb); axis image; 
+    % subplot(1,2,2); imagesc(combined_sum_map); axis image;
+    % drawnow;
+
     clear density_map_comb blendederr_comb rowrange colrange
 end
 
@@ -179,38 +181,55 @@ foveal_density_map=avg_density(global_fovea_coords(2)-768:global_fovea_coords(2)
 
 foveal_density_map = imgaussfilt(foveal_density_map, 8);
 
-polar_foveal_density_map = imcart2pseudopolar(foveal_density_map, 1, 1,[769, 769],'makima');
+polar_foveal_density_map = imcart2pseudopolar(foveal_density_map, 1, 1,[769, 769],'cubic');
 polar_foveal_density_map(polar_foveal_density_map==0) = NaN;
 
 ridgeline = nan(size(polar_foveal_density_map,1), 1);
 ridgeloc = nan(size(polar_foveal_density_map,1), 1);
 
-figure; imagesc(polar_foveal_density_map); axis image;
-hold on; 
+% figure; imagesc(polar_foveal_density_map); axis image;
+% hold on; 
 for p=1:size(polar_foveal_density_map,1)
-    if strcmp(unit, 'microns (mm density)')    
-        [ridgeline(p), ridgeloc(p)] = findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',5000,'SortStr', 'descend','NPeaks', 1);
+    if strcmp(unit, 'microns (mm density)')
+        [line, loc]=findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',4000,'SortStr', 'descend','NPeaks', 1);
     elseif strcmp(unit, 'degrees')
-        [ridgeline(p), ridgeloc(p)] = findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',750,'SortStr', 'descend','NPeaks', 1);
+        [line, loc]=findpeaks(polar_foveal_density_map(p,:),'MinPeakProminence',750,'SortStr', 'descend','NPeaks', 1);
+    end
+
+    if ~isempty(line)
+        ridgeline(p)=line;
+        ridgeloc(p)=loc;
     end
     % plot(polar_foveal_density_map(p,:)); hold on;
-    plot(ridgeloc(p), p,'r*');
+    % plot(ridgeloc(p), p,'r*');
 end
 hold off;
 min_ridge = round(min(ridgeline));
 
+
+[x,y]=pol2cart((0:2*pi/360:2*pi-(2*pi/360))',ridgeloc);
+x=x+769;
+y=y+769;
+
+y(isnan(x)) =[];
+x(isnan(x)) =[];
+% imagesc(foveal_density_map); hold on; plot(x,y)
+
+
+smfoveamask = poly2mask(x,y,size(foveal_density_map,1),size(foveal_density_map,2));
+
 % Set our tolerance just below our minimum ridge size, vs the foveal min
-centralvals = polar_foveal_density_map(:, floor(min(ridgeloc)/2));
-centralvals = mean(centralvals,'omitnan');
-foveal_density_map(isnan(foveal_density_map)) = 0;
-
-tol = min_ridge-centralvals;
-smfoveamask = ~grayconnected(foveal_density_map, 769, 769, tol);
-
-smfoveamask=imerode(smfoveamask,strel('disk',50));
-figure; imagesc(smfoveamask)
-
-threshold_mask = true(size(avg_density));
+% centralvals = polar_foveal_density_map(:, floor(min(ridgeloc)/2));
+% centralvals = mean(centralvals(:),'omitnan');
+% foveal_density_map(isnan(foveal_density_map)) = 0;
+% 
+% tol = min_ridge-centralvals;
+% smfoveamask = ~grayconnected(foveal_density_map, 769, 769, tol);
+% 
+% smfoveamask=imerode(smfoveamask,strel('disk',50));
+% figure; imagesc(smfoveamask)
+% 
+% threshold_mask = true(size(avg_density));
 
 threshold_mask(global_fovea_coords(2)-768:global_fovea_coords(2)+768, global_fovea_coords(1)-768:global_fovea_coords(1)+768) = smfoveamask;
 
@@ -240,7 +259,7 @@ lowconffar = quantile(avg_confidence(threshold_mask(:)),0.001);
 rescaled_avg_conf = (avg_confidence.*threshold_mask)-lowconffar;
 rescaled_avg_conf(rescaled_avg_conf<0) = 0;
 
-highconf = quantile(rescaled_avg_conf(rescaled_avg_conf~=0),0.99); 
+highconf = quantile(rescaled_avg_conf(rescaled_avg_conf~=0),0.995); 
 rescaled_avg_conf = 255*(rescaled_avg_conf./highconf); 
 rescaled_avg_conf(rescaled_avg_conf>255) = 255;
 
@@ -255,10 +274,10 @@ clear rescaled_avg_conf;
 %% Output density image
 
 avg_density(avg_density==0) = NaN;
-lowdens = quantile(avg_density(threshold_mask(:)),0.01);
+lowdens = quantile(avg_density(threshold_mask(:)),0.01)
 rescaled_avg_density = (avg_density.*threshold_mask)-lowdens;
 rescaled_avg_density(rescaled_avg_density<0) = 0;
-highdens = quantile(rescaled_avg_density(rescaled_avg_density~=0),0.99);
+highdens = quantile(rescaled_avg_density(rescaled_avg_density~=0),0.995)
 rescaled_avg_density = 255*(rescaled_avg_density./highdens); 
 rescaled_avg_density(rescaled_avg_density>255) = 255;
 
@@ -274,8 +293,8 @@ rescaled_sum_map = uint8( (255*(combined_sum_map./max(combined_sum_map(:)))).*th
 
 figure(4); imagesc(combined_sum_map); title('Sum Map'); axis image; colormap winter; colorbar;
 clim([0 max(combined_sum_map(:))]);
-saveas(gcf,fullfile(result_path,[num2str(length(fNames)) '_subjects_sum_map.svg']));
 
+saveas(gcf,fullfile(result_path,[num2str(length(fNames)) '_subjects_sum_map.svg']));
 imwrite(rescaled_sum_map, winter(256), fullfile(result_path,[num2str(length(fNames)) '_subjects_sum_map.tif']));
 
 %% Determine average/stddev of all data.
@@ -363,16 +382,16 @@ save( fullfile(result_path,[num2str(length(fNames)) '_aggregate_data.mat']), ...
                             'global_eye', 'threshold_mask', 'value_map_variance',...
                             'unit', 'scaling', 'montage_rect','combined_sum_map','-v7.3');
 
-
+%%
 value_std_dev = value_map_variance;
 value_std_dev = value_std_dev./(combined_sum_map-1);
 value_std_dev(isinf(value_std_dev)) =0;
 value_std_dev = real(sqrt(value_std_dev));
 
-lowdens = quantile(value_std_dev(threshold_mask(:)),0.01);
+lowdens = quantile(value_std_dev(threshold_mask(:)),0.01)
 rescaled = (value_std_dev.*threshold_mask)-lowdens;
 rescaled(rescaled<0) = 0;
-highdens = quantile(rescaled(rescaled~=0),0.99);
+highdens = quantile(rescaled(rescaled~=0),0.995)
 rescaled = 255*(rescaled./highdens); 
 rescaled(rescaled>255) = 255;
 imwrite(rescaled, parula(256), fullfile(result_path,[num2str(length(fNames)) '_subjects_combined_stddev.tif']))

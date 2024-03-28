@@ -134,12 +134,12 @@ for f=1:length(fNames)
     end
     
     confcombfar = blendederr_comb.*~farrangemask;
-    confcombfar(confcombfar==0)=NaN;
-    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.1]);
+    confcombfar(confcombfar==0 | confcombfar>0.9)=NaN;
+    lowconffar = quantile(confcombfar(~isnan(confcombfar) ), [0.1]);
 
     confcombclose = blendederr_comb.*farrangemask;
-    confcombclose(confcombclose==0)=NaN;
-    lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01]);
+    confcombclose(confcombclose==0 | confcombclose>0.9)=NaN;
+    lowconfclose = quantile(confcombclose(~isnan(confcombclose) ), [0.01]);
 
     if strcmp(unit, 'microns (mm density)')
         closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 400/scaling;
@@ -460,7 +460,7 @@ elseif strcmp(unit, 'degrees')
     xlabel('Radial distance (degrees)')
 end
 ylabel('Average confidence (AU)')
-yaxis([0 1]);
+axis([0 3000 0 1]);
 hold off;
 
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgconf.svg']) );
@@ -517,12 +517,12 @@ for f=1:length(fNames)
     end
     
     confcombfar = blendederr_comb.*~farrangemask;
-    confcombfar(confcombfar==0)=NaN;
-    lowconffar = quantile(confcombfar(~isnan(confcombfar)), [0.1]);
+    confcombfar(confcombfar==0 | confcombfar>0.9)=NaN;
+    lowconffar = quantile(confcombfar(~isnan(confcombfar) ), [0.1]);
 
     confcombclose = blendederr_comb.*farrangemask;
-    confcombclose(confcombclose==0)=NaN;
-    lowconfclose = quantile(confcombclose(~isnan(confcombclose)), [0.01]);
+    confcombclose(confcombclose==0 | confcombclose>0.9)=NaN;
+    lowconfclose = quantile(confcombclose(~isnan(confcombclose) ), [0.01]);
 
     if strcmp(unit, 'microns (mm density)')
         closerangemask = sqrt((X-fovea_coords(1)).^2 + (Y-fovea_coords(2)).^2) <= 400/scaling;

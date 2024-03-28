@@ -53,7 +53,7 @@ end
 
 %%
 restartf = 1;
-endf = 19; %length(folderList);
+endf = length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
@@ -116,7 +116,7 @@ end
 
 %% Process each of the above, merging their pieces together
 restartf=1;
-endf=19; %length(folderList);
+endf=length(folderList);
 %%
 for f=restartf:endf
     restartf=f;
@@ -325,9 +325,9 @@ for f=restartf:endf
                 density_map_split = splitannuli.*density_map_split;
 
                 
-                figure(2); subplot(1,2,1); imagesc(density_map_split); axis image;
-                subplot(1,2,2); imagesc(density_map_conf);axis image;
-                drawnow;
+                % figure(2); subplot(1,2,1); imagesc(density_map_split); axis image;
+                % subplot(1,2,2); imagesc(density_map_conf);axis image;
+                % drawnow;
                 % saveas(gcf, fullfile(thisfolder, folderList{f},'conf_split_density_areas.png') );
                 % close;
                 
