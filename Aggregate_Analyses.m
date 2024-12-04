@@ -102,6 +102,9 @@ hold off;
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgdens.svg']) );
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgdens.png']) );
 
+writematrix([position' avg_sup_strip avg_inf_strip avg_nasal_strip' avg_temp_strip'], ...
+             fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_avgdens.csv']))
+
 figure(10); clf; 
 
  % Individual subjects
@@ -323,7 +326,7 @@ for f=1:length(fNames)
     end
     hold off;
     drawnow;
-
+    
 end
 
 subplot(2,2,1); axis([0 3000 0 15e4]);
@@ -414,13 +417,16 @@ drawnow; hold off;
 figure(100); clf; hold on;
 
 sup_stddev = sqrt(mean(flipud(value_map_variance(global_fovea_coords(2)-strip_length:global_fovea_coords(2),global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius)), 2, 'omitnan'));
-plot(position, sup_stddev);
+plot(position, avg_sup_strip+(1.96*sup_stddev/sqrt(length(fNames))), 'b', position, avg_sup_strip-(1.96*sup_stddev/sqrt(length(fNames))), 'b');
+
 inf_stddev = sqrt(mean(value_map_variance(global_fovea_coords(2):global_fovea_coords(2)+strip_length, global_fovea_coords(1)-strip_radius:global_fovea_coords(1)+strip_radius), 2, 'omitnan'));
-plot(position, inf_stddev); 
+plot(position, avg_inf_strip+(1.96*inf_stddev/sqrt(length(fNames))), 'r',position, avg_inf_strip-(1.96*inf_stddev/sqrt(length(fNames))), 'r'); 
+
 nasal_stddev = sqrt(mean(value_map_variance(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius,global_fovea_coords(1):global_fovea_coords(1)+strip_length), 1, 'omitnan'));
-plot(position,nasal_stddev); 
+plot(position,avg_nasal_strip+(1.96*nasal_stddev/sqrt(length(fNames))), 'y', position,avg_nasal_strip-(1.96*nasal_stddev/sqrt(length(fNames))), 'y' ); 
+
 temp_stddev = sqrt(mean(fliplr(value_map_variance(global_fovea_coords(2)-strip_radius:global_fovea_coords(2)+strip_radius, global_fovea_coords(1)-strip_length:global_fovea_coords(1))), 1, 'omitnan'));
-plot(position,temp_stddev); 
+plot(position,avg_temp_strip+(1.96*temp_stddev/sqrt(length(fNames))), 'm', position,avg_temp_strip-(1.96*temp_stddev/sqrt(length(fNames))), 'm'); 
 
 legend('Superior','Inferior','Nasal','Temporal')
 if strcmp(unit, 'microns (mm density)')    
@@ -435,6 +441,9 @@ hold off;
 
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_stddev.svg']) );
 saveas(gcf, fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_stddev.png']) );
+
+writematrix([position' sup_stddev inf_stddev nasal_stddev' temp_stddev'], ...
+             fullfile(globalpath,[num2str(length(fNames)) 'subjects_directional_stddev.csv']))
 
 
 %% Obtain global strip averages of confidence.

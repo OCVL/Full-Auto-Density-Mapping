@@ -229,9 +229,9 @@ smfoveamask = poly2mask(x,y,size(foveal_density_map,1),size(foveal_density_map,2
 % smfoveamask=imerode(smfoveamask,strel('disk',50));
 % figure; imagesc(smfoveamask)
 % 
-% threshold_mask = true(size(avg_density));
+threshold_mask = true(size(avg_density));
 
-threshold_mask(global_fovea_coords(2)-768:global_fovea_coords(2)+768, global_fovea_coords(1)-768:global_fovea_coords(1)+768) = smfoveamask;
+threshold_mask(global_fovea_coords(2)-768:global_fovea_coords(2)+768, global_fovea_coords(1)-768:global_fovea_coords(1)+768) = ~smfoveamask;
 
 % Ensure that we only see the averages of data with more than 20% of our points going into it.
 threshold_mask = logical(threshold_mask.*(combined_sum_map>=0.2*max(combined_sum_map(:)) )); 
@@ -242,15 +242,6 @@ threshold_mask = logical(threshold_mask.*(combined_sum_map>=0.2*max(combined_sum
 spacingcaxis = quantile(avg_density(threshold_mask(:)),[0.01 0.99]);
 figure(1); imagesc(avg_density.*threshold_mask); title('Combined Spacing'); axis image;
 clim(spacingcaxis); colorbar;
-
-%% Output spacing image
-rescaled_avg_spacing = (avg_density.*threshold_mask)-spacingcaxis(1);
-rescaled_avg_spacing(rescaled_avg_spacing<0) = 0;
-rescaled_avg_spacing = 255*(rescaled_avg_spacing./quantile(rescaled_avg_spacing(rescaled_avg_spacing~=0),0.99)); 
-rescaled_avg_spacing(rescaled_avg_spacing>255) = 255;
-
-imwrite(rescaled_avg_spacing, parula(256), fullfile(result_path, [num2str(length(fNames)) '_subjects_combined_spacing.tif']))
-clear rescaled_avg_spacing;
 
 %% Output confidence image
 
